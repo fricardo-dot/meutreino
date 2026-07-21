@@ -87,4 +87,19 @@ export const workoutsRepository = {
       [id],
     );
   },
+
+  /**
+   * Atualiza a posição (cycle_order) de uma ficha no ciclo.
+   * NULL = remove do ciclo.
+   */
+  async updateCycleOrder(
+    db: AppDatabase,
+    id: number,
+    cycleOrder: number | null,
+  ): Promise<void> {
+    await db.runAsync(
+      'UPDATE workouts SET cycle_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;',
+      [cycleOrder, id],
+    );
+  },
 };

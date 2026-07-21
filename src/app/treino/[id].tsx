@@ -127,6 +127,38 @@ export default function TreinoDetalheScreen() {
         ) : null}
       </View>
 
+      {/* Ordem no ciclo de treinos */}
+      <View style={styles.cycleWrap}>
+        <Text style={styles.cycleLabel}>ORDEM NO CICLO</Text>
+        <Text style={styles.cycleValue}>
+          {workout?.cycle_order
+            ? `Posição ${workout.cycle_order} — este é o ${ordinal(workout.cycle_order)} treino do ciclo`
+            : 'Fora do ciclo (não é sugerido automaticamente)'}
+        </Text>
+        <Pressable
+          style={styles.cycleToggleBtn}
+          onPress={async () => {
+            if (!db || !workout) return;
+            if (workout.cycle_order !== null) {
+              await workoutsRepository.updateCycleOrder(db, workout.id, null);
+              void load();
+            } else {
+              const all = await workoutsRepository.listActive(db);
+              const max = all.reduce(
+                (acc, w) => (w.cycle_order && w.cycle_order > acc ? w.cycle_order : acc),
+                0,
+              );
+              await workoutsRepository.updateCycleOrder(db, workout.id, max + 1);
+              void load();
+            }
+          }}
+        >
+          <Text style={styles.cycleToggleText}>
+            {workout?.cycle_order ? 'Remover do ciclo' : 'Adicionar ao ciclo'}
+          </Text>
+        </Pressable>
+      </View>
+
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
@@ -306,6 +338,33 @@ const styles = StyleSheet.create({
   },
   startBtnDisabled: { opacity: 0.4 },
   startBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  cycleWrap: {
+    backgroundColor: '#15151C',
+    borderWidth: 1,
+    borderColor: '#2A2A35',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  cycleLabel: {
+    color: '#6B6B76',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  cycleValue: { color: '#F5F5F7', fontSize: 14, lineHeight: 20 },
+  cycleToggleBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#0B0B0F',
+    borderWidth: 1,
+    borderColor: '#B4FF39',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  cycleToggleText: { color: '#B4FF39', fontSize: 13, fontWeight: '600' },
   pickerScreen: { flex: 1, backgroundColor: '#0B0B0F' },
   pickerHeader: {
     paddingTop: 56,
@@ -340,3 +399,8 @@ const styles = StyleSheet.create({
   pickerItemName: { color: '#F5F5F7', fontSize: 16, fontWeight: '500' },
   pickerItemMeta: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
 });
+
+/** 1 → "1º", 2 → "2º", 3 → "3º"... */
+function ordinal(n: number): string {
+  return `${n}º`;
+}

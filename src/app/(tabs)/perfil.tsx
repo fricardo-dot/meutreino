@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -36,7 +37,6 @@ export default function PerfilScreen() {
   const [muscleVolume, setMuscleVolume] = useState<MuscleGroupVolume[]>([]);
   const [prs, setPrs] = useState<Array<{ exercise_name: string; pr_type: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
-  const [weighing, setWeighing] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
 
   const load = useCallback(async () => {
@@ -88,14 +88,9 @@ export default function PerfilScreen() {
           <Text style={styles.hello}>Olá,</Text>
           <Text style={styles.name}>{profile?.name || 'Atleta'}</Text>
         </View>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.iconBtn} onPress={() => setEditingProfile(true)}>
-            <Ionicons name="settings-outline" size={20} color="#A1A1AA" />
-          </Pressable>
-          <Pressable style={styles.weighBtn} onPress={() => setWeighing(true)}>
-            <Text style={styles.weighBtnText}>+ Pesagem</Text>
-          </Pressable>
-        </View>
+        <Pressable style={styles.iconBtn} onPress={() => setEditingProfile(true)}>
+          <Ionicons name="settings-outline" size={22} color="#A1A1AA" />
+        </Pressable>
       </View>
 
       {/* Cards de peso/IMC/alvo */}
@@ -121,6 +116,38 @@ export default function PerfilScreen() {
         <StatCard big value={formatDuration(stats?.totalDurationSeconds ?? 0)} label="tempo treinado" />
         <StatCard big value={String(stats?.sessionsLast7Days ?? 0)} label="treinos / 7 dias" />
       </View>
+
+      {/* Botão resetar estatísticas */}
+      {(stats?.totalSessions ?? 0) > 0 ? (
+        <Pressable
+          style={styles.resetBtn}
+          onPress={() => {
+            Alert.alert(
+              'Resetar estatísticas?',
+              'Apaga TODAS as sessões, séries e recordes. Seus treinos (fichas) e exercícios NÃO são afetados. Esta ação não pode ser desfeita.',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Resetar tudo',
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!db) return;
+                    await db.execAsync(`
+                      DELETE FROM personal_records;
+                      DELETE FROM session_sets;
+                      DELETE FROM session_exercises;
+                      DELETE FROM sessions;
+                    `);
+                    void load();
+                  },
+                },
+              ],
+            );
+          }}
+        >
+          <Text style={styles.resetBtnText}>Resetar estatísticas</Text>
+        </Pressable>
+      ) : null}
 
       {/* Volume por grupo muscular */}
       {muscleVolume.length > 0 ? (
@@ -158,28 +185,23 @@ export default function PerfilScreen() {
       ) : null}
 
       {/* Pesagem modal */}
-      <WeighModal
-        visible={weighing}
-        currentWeight={latestWeight?.weight_kg?.toString() ?? ''}
-        onClose={() => setWeighing(false)}
-        onSave={async (weight) => {
-          if (!db) return;
-          const today = new Date();
-          const dateISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          await bodyWeightRepository.upsert(db, { weight_kg: weight, date: dateISO });
-          setWeighing(false);
-          void load();
-        }}
-      />
-
-      {/* Modal de edição de perfil (nome, altura, alvo) */}
+      {/* Modal unificado: nome, altura, alvo, pesagem de hoje */}
       <ProfileEditModal
         visible={editingProfile}
         profile={profile}
+        latestWeight={latestWeight}
         onClose={() => setEditingProfile(false)}
         onSave={async (input) => {
           if (!db) return;
-          await userProfileRepository.update(db, input);
+          const { today_weight_kg, ...profileInput } = input;
+          // Atualiza dados do perfil.
+          await userProfileRepository.update(db, profileInput);
+          // Salva pesagem de hoje (se informada).
+          if (today_weight_kg && today_weight_kg > 0) {
+            const today = new Date();
+            const dateISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            await bodyWeightRepository.upsert(db, { weight_kg: today_weight_kg, date: dateISO });
+          }
           setEditingProfile(false);
           void load();
         }}
@@ -215,80 +237,47 @@ function StatCard({ value, label, big }: { value: string; label: string; big?: b
   );
 }
 
-function WeighModal({
-  visible,
-  currentWeight,
-  onClose,
-  onSave,
-}: {
-  visible: boolean;
-  currentWeight: string;
-  onClose: () => void;
-  onSave: (weight: number) => void;
-}) {
-  const [weight, setWeight] = useState(currentWeight);
-  useEffect(() => { if (visible) setWeight(currentWeight); }, [visible, currentWeight]);
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.modalTitle}>Registrar pesagem</Text>
-          <Text style={styles.modalSubtitle}>Qual seu peso hoje?</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="decimal-pad"
-            autoFocus
-            selectTextOnFocus
-          />
-          <Pressable
-            style={styles.modalSaveBtn}
-            onPress={() => {
-              const w = parseFloat(weight.replace(',', '.'));
-              if (Number.isFinite(w) && w > 0) onSave(w);
-            }}
-          >
-            <Text style={styles.modalSaveBtnText}>Salvar</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 /**
- * Modal de edição dos dados pessoais (nome, altura, peso-alvo).
+ * Modal unificado: dados pessoais + pesagem de hoje.
  */
 function ProfileEditModal({
   visible,
   profile,
+  latestWeight,
   onClose,
   onSave,
 }: {
   visible: boolean;
   profile: UserProfileRow | null;
+  latestWeight: BodyWeightEntryRow | null;
   onClose: () => void;
-  onSave: (input: { name?: string | null; height_cm?: number | null; target_weight_kg?: number | null }) => void;
+  onSave: (input: {
+    name?: string | null;
+    height_cm?: number | null;
+    target_weight_kg?: number | null;
+    today_weight_kg?: number | null;
+  }) => void;
 }) {
   const [name, setName] = useState('');
   const [height, setHeight] = useState('');
   const [target, setTarget] = useState('');
+  const [todayWeight, setTodayWeight] = useState('');
 
   useEffect(() => {
     if (visible && profile) {
       setName(profile.name ?? '');
       setHeight(profile.height_cm ? String(profile.height_cm) : '');
       setTarget(profile.target_weight_kg ? String(profile.target_weight_kg) : '');
+      setTodayWeight(latestWeight ? String(latestWeight.weight_kg) : '');
     }
-  }, [visible, profile]);
+  }, [visible, profile, latestWeight]);
 
   function handleSave() {
     onSave({
       name: name.trim() || null,
       height_cm: height ? parseFloat(height.replace(',', '.')) : null,
       target_weight_kg: target ? parseFloat(target.replace(',', '.')) : null,
+      today_weight_kg: todayWeight ? parseFloat(todayWeight.replace(',', '.')) : null,
     });
   }
 
@@ -297,7 +286,7 @@ function ProfileEditModal({
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.modalTitle}>Meus dados</Text>
-          <Text style={styles.modalSubtitle}>Usados pra calcular IMC e acompanhar evolução</Text>
+          <Text style={styles.modalSubtitle}>Nome, medidas e pesagem de hoje</Text>
 
           <Text style={styles.fieldLabel}>Nome</Text>
           <TextInput
@@ -308,23 +297,38 @@ function ProfileEditModal({
             placeholderTextColor="#6B6B76"
           />
 
-          <Text style={styles.fieldLabel}>Altura (cm)</Text>
-          <TextInput
-            style={styles.fieldInput}
-            value={height}
-            onChangeText={setHeight}
-            keyboardType="decimal-pad"
-            placeholder="Ex: 178"
-            placeholderTextColor="#6B6B76"
-          />
+          <View style={styles.fieldRow}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={styles.fieldLabel}>Altura (cm)</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={height}
+                onChangeText={setHeight}
+                keyboardType="decimal-pad"
+                placeholder="178"
+                placeholderTextColor="#6B6B76"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Peso-alvo (kg)</Text>
+              <TextInput
+                style={styles.fieldInput}
+                value={target}
+                onChangeText={setTarget}
+                keyboardType="decimal-pad"
+                placeholder="80"
+                placeholderTextColor="#6B6B76"
+              />
+            </View>
+          </View>
 
-          <Text style={styles.fieldLabel}>Peso-alvo (kg)</Text>
+          <Text style={styles.fieldLabel}>Peso de hoje (kg)</Text>
           <TextInput
-            style={styles.fieldInput}
-            value={target}
-            onChangeText={setTarget}
+            style={[styles.fieldInput, styles.weightInputHighlight]}
+            value={todayWeight}
+            onChangeText={setTodayWeight}
             keyboardType="decimal-pad"
-            placeholder="Ex: 80"
+            placeholder="Ex: 78.5"
             placeholderTextColor="#6B6B76"
           />
 
@@ -390,7 +394,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0B0B0F' },
   center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
     width: 40,
     height: 40,
@@ -403,13 +406,6 @@ const styles = StyleSheet.create({
   },
   hello: { color: '#A1A1AA', fontSize: 14 },
   name: { color: '#F5F5F7', fontSize: 26, fontWeight: '700' },
-  weighBtn: {
-    backgroundColor: '#B4FF39',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  weighBtnText: { color: '#0B0B0F', fontWeight: '700', fontSize: 14 },
   bioRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   bioCard: {
     flex: 1,
@@ -487,6 +483,18 @@ const styles = StyleSheet.create({
     color: '#F5F5F7',
     fontSize: 16,
   },
+  fieldRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  weightInputHighlight: {
+    borderColor: '#B4FF39',
+    borderWidth: 2,
+  },
+  resetBtn: {
+    alignSelf: 'center',
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  resetBtnText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
   modalSaveBtn: {
     backgroundColor: '#B4FF39',
     borderRadius: 14,
