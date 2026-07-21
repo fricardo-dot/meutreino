@@ -76,11 +76,10 @@ interface AdapterState {
  * Retorna o adapter e o state interno (pra persistência final).
  */
 async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: AdapterState }> {
-  // Caminho do WASM — prefixa com baseUrl quando publicado em subdiretório.
-  // Em dev: EXPO_BASE_URL é vazio → "/sql-wasm.wasm".
-  // Em prod no GitHub Pages: EXPO_BASE_URL="/meutreino" → "/meutreino/sql-wasm.wasm".
-  const baseUrl = (typeof process !== 'undefined' && process.env?.EXPO_BASE_URL) || '';
-  const wasmUrl = `${baseUrl}/sql-wasm.wasm`;
+  // Caminho do WASM — relativo à página atual, funciona em subpath sem config.
+  // Em dev: página em / → "./sql-wasm.wasm" resolve pra "/sql-wasm.wasm".
+  // Em prod: página em /meutreino/ → "./sql-wasm.wasm" resolve pra "/meutreino/sql-wasm.wasm".
+  const wasmUrl = './sql-wasm.wasm';
 
   let SQL: SqlJsStatic;
   try {
