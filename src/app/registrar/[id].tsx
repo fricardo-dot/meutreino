@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -254,6 +255,13 @@ function ExerciseBlock({
     }
   }
 
+  function handleReset() {
+    setWeight('0');
+    setReps('0');
+    setRir('');
+    setLastResult(null);
+  }
+
   return (
     <View style={styles.block}>
       <Text style={styles.blockTitle}>{sessionExercise.exercise_name}</Text>
@@ -306,15 +314,25 @@ function ExerciseBlock({
         />
       </View>
 
-      <Pressable
-        style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        <Text style={styles.saveBtnText}>
-          {saving ? 'Salvando...' : `Salvar série ${nextSetNumber}`}
-        </Text>
-      </Pressable>
+      <View style={styles.actionsRow}>
+        <Pressable
+          style={[styles.resetBtn, saving && styles.actionBtnDisabled]}
+          onPress={handleReset}
+          disabled={saving}
+          hitSlop={8}
+        >
+          <Ionicons name="refresh" size={22} color="#A1A1AA" />
+        </Pressable>
+        <Pressable
+          style={[styles.saveBtn, saving && styles.actionBtnDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          <Text style={styles.saveBtnText}>
+            {saving ? 'Salvando...' : `Salvar série ${nextSetNumber}`}
+          </Text>
+        </Pressable>
+      </View>
 
       {lastResult ? (
         <Text style={styles.savedFeedback}>
@@ -386,13 +404,30 @@ const styles = StyleSheet.create({
   input: { color: '#F5F5F7', fontSize: 18, fontWeight: '600', paddingVertical: 10, flex: 1 },
   inputSuffix: { color: '#6B6B76', fontSize: 12 },
   saveBtn: {
+    flex: 1,
     backgroundColor: '#B4FF39',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  saveBtnDisabled: { opacity: 0.5 },
+  actionBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  resetBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#15151C',
+    borderWidth: 1,
+    borderColor: '#2A2A35',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   savedFeedback: { color: '#22C55E', fontSize: 13, marginTop: 10, textAlign: 'center', fontWeight: '500' },
   footer: {
     position: 'absolute',
