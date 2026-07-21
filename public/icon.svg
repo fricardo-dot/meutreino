@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#15151C"/>
+      <stop offset="100%" stop-color="#0B0B0F"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#B4FF39" flood-opacity="0.42"/>
+    </filter>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#D9D9DE"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="175" y="492" width="674" height="40" rx="20" fill="url(#metal)"/>
+
+    <rect x="148" y="438" width="42" height="148" rx="14" fill="url(#metal)"/>
+    <rect x="204" y="365" width="58" height="294" rx="16" fill="url(#metal)"/>
+    <rect x="279" y="316" width="74" height="392" rx="18" fill="url(#metal)"/>
+
+    <rect x="834" y="438" width="42" height="148" rx="14" fill="url(#metal)"/>
+    <rect x="762" y="365" width="58" height="294" rx="16" fill="url(#metal)"/>
+    <rect x="671" y="316" width="74" height="392" rx="18" fill="url(#metal)"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <circle cx="512" cy="512" r="182" fill="none" stroke="#B4FF39" stroke-width="30"/>
+    <polyline points="425,520 493,586 610,447"
+      fill="none" stroke="#B4FF39" stroke-width="42"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
