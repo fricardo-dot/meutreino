@@ -256,10 +256,37 @@ function ExerciseBlock({
   }
 
   function handleReset() {
-    setWeight('0');
-    setReps('0');
-    setRir('');
-    setLastResult(null);
+    if (sets.length === 0) {
+      // Sem séries pra apagar — só zera os inputs.
+      setWeight('0');
+      setReps('0');
+      setRir('');
+      setLastResult(null);
+      return;
+    }
+    Alert.alert(
+      'Apagar todas as séries?',
+      `Isto vai remover as ${sets.length} séries já registradas deste exercício. Os inputs também serão zerados. Esta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Apagar tudo',
+          style: 'destructive',
+          onPress: async () => {
+            if (!db) return;
+            await sessionSetsRepository.removeAllFromSessionExercise(
+              db,
+              sessionExercise.id,
+            );
+            setWeight('0');
+            setReps('0');
+            setRir('');
+            setLastResult(null);
+            onSaved();
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -290,7 +317,7 @@ function ExerciseBlock({
           step={2.5}
           decimals={1}
           keyboardType="decimal-pad"
-          flex={1.4}
+          flex={1.3}
         />
         <StepperInput
           label="REPS"
@@ -299,7 +326,7 @@ function ExerciseBlock({
           step={1}
           decimals={0}
           keyboardType="number-pad"
-          flex={1.1}
+          flex={1}
         />
         <StepperInput
           label="RIR"
@@ -310,7 +337,7 @@ function ExerciseBlock({
           min={0}
           max={3}
           keyboardType="number-pad"
-          flex={0.9}
+          flex={1}
         />
       </View>
 

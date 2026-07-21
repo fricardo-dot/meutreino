@@ -148,8 +148,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   btn: {
-    width: 40,
-    height: 52,
+    width: 32,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background.surface,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   btnPressed: { backgroundColor: colors.background.elevated },
   btnText: {
     color: colors.accent.base,
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '300',
   },
   valueWrap: {
@@ -165,20 +165,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 9,
   },
   value: {
     color: colors.text.primary,
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '700',
   },
   input: {
     color: colors.text.primary,
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
     padding: 0,
-    minWidth: 60,
+    minWidth: 40,
   },
   suffix: {
     color: colors.text.muted,

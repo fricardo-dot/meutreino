@@ -100,4 +100,18 @@ export const sessionSetsRepository = {
   async remove(db: AppDatabase, setId: number): Promise<void> {
     await db.runAsync('DELETE FROM session_sets WHERE id = ?;', [setId]);
   },
+
+  /**
+   * Remove TODAS as séries de um exercício da sessão.
+   * Usado pra "começar do zero" um exercício dentro da sessão.
+   */
+  async removeAllFromSessionExercise(
+    db: AppDatabase,
+    sessionExerciseId: number,
+  ): Promise<void> {
+    await db.runAsync(
+      'DELETE FROM session_sets WHERE session_exercise_id = ?;',
+      [sessionExerciseId],
+    );
+  },
 };
