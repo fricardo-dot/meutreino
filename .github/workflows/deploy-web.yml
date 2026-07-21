@@ -40,11 +40,11 @@ jobs:
         run: npm ci
 
       - name: Build web (com baseUrl do GitHub Pages)
-        # O EXPO_BASE_URL define o subpath do GitHub Pages:
+        # O BASE_URL define o subpath do GitHub Pages:
         #   /meutreino  → https://usuario.github.io/meutreino/
         # Substitua "meutreino" pelo nome do repositório se for diferente.
         env:
-          EXPO_BASE_URL: /meutreino
+          BASE_URL: /meutreino
         run: npx expo export --platform web
 
       - name: Setup Pages

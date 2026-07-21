@@ -1,12 +1,11 @@
 /**
- * Configuração dinâmica do Expo — lê EXPO_BASE_URL do ambiente pra servir
- * em subpath (GitHub Pages: /meutreino/).
+ * Configuração dinâmica do Expo.
  *
- * O `web.baseUrl` faz o Expo Router gerar rotas e assets com o prefixo
- * correto, e o DefinePlugin injeta `process.env.EXPO_BASE_URL` no bundle
- * (usado por client.web.ts pra localizar o WASM).
+ * `experiments.baseUrl` (definido no build via env BASE_URL) faz o Expo Router
+ * gerar todos os assets e rotas com o prefixo correto do subpath do GitHub
+ * Pages. Em dev (BASE_URL vazio) fica na raiz.
  */
-const baseUrl = process.env.EXPO_BASE_URL || '';
+const baseUrl = process.env.BASE_URL || '';
 
 export default {
   expo: {
@@ -27,12 +26,15 @@ export default {
     web: {
       bundler: 'metro',
       output: 'single',
-      baseUrl,
       favicon: './assets/images/favicon.png',
     },
     plugins: ['expo-router'],
+    experiments: {
+      baseUrl,
+    },
     extra: {
       baseUrl,
     },
   },
 };
+
