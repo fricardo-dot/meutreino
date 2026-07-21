@@ -37,8 +37,11 @@ interface StepperInputProps {
   max?: number;
   /** Tipo de teclado quando o usuário toca pra digitar. */
   keyboardType?: 'decimal-pad' | 'number-pad';
-  /** Estica pra ocupar largura disponível. Default true. */
-  flex?: boolean;
+  /**
+   * Proporção flex do stepper na linha. Default: 1.
+   * Use números maiores pra dar mais espaço (ex: peso=1.4, reps=1, rir=0.85).
+   */
+  flex?: number;
 }
 
 export function StepperInput({
@@ -51,7 +54,7 @@ export function StepperInput({
   min = 0,
   max,
   keyboardType = 'decimal-pad',
-  flex = true,
+  flex = 1,
 }: StepperInputProps) {
   const [editing, setEditing] = useState(false);
 
@@ -78,7 +81,7 @@ export function StepperInput({
   }
 
   return (
-    <View style={[styles.container, !flex && styles.containerFixed]}>
+    <View style={[styles.container, { flex }]}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
         <StepperButton direction="minus" onPress={handleDecrement} />
@@ -128,7 +131,6 @@ function StepperButton({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  containerFixed: { flex: 0 },
   label: {
     color: colors.text.muted,
     fontSize: 11,
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   btn: {
-    width: 44,
+    width: 40,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',

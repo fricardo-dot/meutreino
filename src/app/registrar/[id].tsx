@@ -282,6 +282,7 @@ function ExerciseBlock({
           step={2.5}
           decimals={1}
           keyboardType="decimal-pad"
+          flex={1.4}
         />
         <StepperInput
           label="REPS"
@@ -290,6 +291,7 @@ function ExerciseBlock({
           step={1}
           decimals={0}
           keyboardType="number-pad"
+          flex={1.1}
         />
         <StepperInput
           label="RIR"
@@ -300,7 +302,7 @@ function ExerciseBlock({
           min={0}
           max={3}
           keyboardType="number-pad"
-          flex={false}
+          flex={0.9}
         />
       </View>
 
