@@ -1,0 +1,25 @@
+{
+  "name": "MeuTreino",
+  "short_name": "MeuTreino",
+  "description": "App de treinos de academia com calendário, ciclo automático e recordes pessoais.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0B0B0F",
+  "theme_color": "#0B0B0F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon-1024.png",
+      "sizes": "192x192 512x512 1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-1024.png",
+      "sizes": "192x192 512x512 1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
