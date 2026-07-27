@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,17 @@ import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
 import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
+
+/**
+ * SessionExerciseRow estendido com dados do plano (workout_exercises) e do
+ * exercício (exercises), trazidos via JOIN na carga da sessão.
+ */
+type SessionExerciseWithPlan = SessionExerciseRow & {
+  target_sets: number | null;
+  target_reps: string | null;
+  target_rest_seconds: number | null;
+  equipment: string | null;
+};
 
 /**
  * Formata número pra input: 80 → "80", 12.5 → "12.5", 0 → "0".
@@ -52,20 +62,24 @@ export default function RegistrarSessaoScreen() {
   const { db, status } = useDatabase();
 
   const [session, setSession] = useState<SessionRow | null>(null);
-  const [exercises, setExercises] = useState<SessionExerciseRow[]>([]);
+  const [exercises, setExercises] = useState<SessionExerciseWithPlan[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<number, SessionSetRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
-
-  const restTimer = useRestTimer();
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db || Number.isNaN(sessionId)) return;
     const s = await sessionsRepository.getById(db, sessionId);
     setSession(s);
     if (s) {
-      const exs = await db.getAllAsync<SessionExerciseRow>(
-        `SELECT * FROM session_exercises WHERE session_id = ? ORDER BY sort_order;`,
+      const exs = await db.getAllAsync<SessionExerciseWithPlan>(
+        `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
+         FROM session_exercises se
+         LEFT JOIN workout_exercises we ON we.id = se.workout_exercise_id
+         LEFT JOIN exercises e ON e.id = se.exercise_id
+         WHERE se.session_id = ?
+         ORDER BY se.sort_order;`,
         [sessionId],
       );
       setExercises(exs);
@@ -82,20 +96,16 @@ export default function RegistrarSessaoScreen() {
     void load();
   }, [load]);
 
-  async function handleComplete() {
+  function handleComplete() {
+    setShowCompleteConfirm(true);
+  }
+
+  async function confirmComplete() {
     if (!db || !session) return;
-    Alert.alert('Concluir treino?', 'A sessão será finalizada.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Concluir',
-        onPress: async () => {
-          setCompleting(true);
-          await sessionsRepository.completeSession(db, session.id);
-          setCompleting(false);
-          router.replace('/historico');
-        },
-      },
-    ]);
+    setCompleting(true);
+    await sessionsRepository.completeSession(db, session.id);
+    setCompleting(false);
+    router.replace('/historico');
   }
 
   if (loading) {
@@ -136,16 +146,6 @@ export default function RegistrarSessaoScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      {restTimer.isActive && session.status === 'em_andamento' && (
-        <View style={styles.restBar}>
-          <Text style={styles.restLabel}>Descanso</Text>
-          <Text style={styles.restTime}>{restTimer.remaining}s</Text>
-          <Pressable onPress={restTimer.cancel} hitSlop={8}>
-            <Text style={styles.restSkip}>Pular</Text>
-          </Pressable>
-        </View>
-      )}
-
       <FlatList
         data={exercises}
         keyExtractor={(item) => String(item.id)}
@@ -154,9 +154,7 @@ export default function RegistrarSessaoScreen() {
             sessionExercise={item}
             sessionId={session.id}
             sets={setsByExercise[item.id] ?? []}
-            restSeconds={90}
             onSaved={() => void load()}
-            restTimer={restTimer}
           />
         )}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
@@ -166,7 +164,7 @@ export default function RegistrarSessaoScreen() {
         {session.status === 'em_andamento' ? (
           <Pressable
             style={[styles.completeBtn, completing && styles.completeBtnDisabled]}
-            onPress={handleComplete}
+            onPress={() => setShowCompleteConfirm(true)}
             disabled={completing}
           >
             <Text style={styles.completeBtnText}>
@@ -179,6 +177,15 @@ export default function RegistrarSessaoScreen() {
           </Pressable>
         )}
       </View>
+
+      <ConfirmDialog
+        visible={showCompleteConfirm}
+        title="Concluir treino?"
+        message="A sessão será finalizada e vai para o histórico."
+        confirmText="Concluir"
+        onConfirm={confirmComplete}
+        onCancel={() => setShowCompleteConfirm(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -190,18 +197,15 @@ function ExerciseBlock({
   sessionExercise,
   sessionId,
   sets,
-  restSeconds,
   onSaved,
-  restTimer,
 }: {
-  sessionExercise: SessionExerciseRow;
+  sessionExercise: SessionExerciseWithPlan;
   sessionId: number;
   sets: SessionSetRow[];
-  restSeconds: number;
   onSaved: () => void;
-  restTimer: ReturnType<typeof useRestTimer>;
 }) {
   const { db } = useDatabase();
+  const restTimer = useRestTimer();
   const [weight, setWeight] = useState('0');
   const [reps, setReps] = useState('0');
   const [rir, setRir] = useState('');
@@ -210,6 +214,9 @@ function ExerciseBlock({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const nextSetNumber = sets.length + 1;
+  const maxSets = sessionExercise.target_sets ?? 99;
+  const allDone = nextSetNumber > maxSets;
+  const restSeconds = sessionExercise.target_rest_seconds ?? 90;
 
   // Autofill: pré-preenche peso/reps/RIR da última série (mesma sessão ou histórica).
   // Roda na montagem e quando o número de séries muda (após salvar).
@@ -287,6 +294,15 @@ function ExerciseBlock({
   return (
     <View style={styles.block}>
       <Text style={styles.blockTitle}>{sessionExercise.exercise_name}</Text>
+      {(sessionExercise.target_sets || sessionExercise.target_reps) && (
+        <Text style={styles.blockPlan}>
+          {sessionExercise.target_sets ?? '?'}x {sessionExercise.target_reps ?? '?'}
+          {sessionExercise.target_rest_seconds ? ` · descanso ${sessionExercise.target_rest_seconds}s` : ''}
+        </Text>
+      )}
+      {sessionExercise.equipment ? (
+        <Text style={styles.blockMeta}>{sessionExercise.equipment}</Text>
+      ) : null}
 
       {/* Séries já registradas */}
       {sets.length > 0 && (
@@ -302,59 +318,76 @@ function ExerciseBlock({
         </View>
       )}
 
-      {/* Inputs rápidos com steppers +/− */}
-      <View style={styles.inputRow}>
-        <StepperInput
-          label="PESO"
-          value={weight}
-          onChange={setWeight}
-          suffix="kg"
-          step={2.5}
-          decimals={1}
-          keyboardType="decimal-pad"
-          flex={1.3}
-        />
-        <StepperInput
-          label="REPS"
-          value={reps}
-          onChange={setReps}
-          step={1}
-          decimals={0}
-          keyboardType="number-pad"
-          flex={1}
-        />
-        <StepperInput
-          label="RIR"
-          value={rir || '0'}
-          onChange={setRir}
-          step={1}
-          decimals={0}
-          min={0}
-          max={3}
-          keyboardType="number-pad"
-          flex={1}
-        />
-      </View>
+      {/* Cronômetro de descanso (próprio do exercício) */}
+      {restTimer.isActive && (
+        <View style={styles.restBar}>
+          <Text style={styles.restLabel}>Descanso</Text>
+          <Text style={styles.restTime}>{restTimer.remaining}s</Text>
+          <Pressable onPress={restTimer.cancel} hitSlop={8}>
+            <Text style={styles.restSkip}>Pular</Text>
+          </Pressable>
+        </View>
+      )}
 
-      <View style={styles.actionsRow}>
-        <Pressable
-          style={[styles.resetBtn, saving && styles.actionBtnDisabled]}
-          onPress={handleReset}
-          disabled={saving}
-          hitSlop={8}
-        >
-          <Ionicons name="refresh" size={22} color="#A1A1AA" />
-        </Pressable>
-        <Pressable
-          style={[styles.saveBtn, saving && styles.actionBtnDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveBtnText}>
-            {saving ? 'Salvando...' : `Salvar série ${nextSetNumber}`}
-          </Text>
-        </Pressable>
-      </View>
+      {allDone ? (
+        <Text style={styles.allDoneText}>✓ Todas as {maxSets} séries concluídas</Text>
+      ) : (
+        <>
+          {/* Inputs rápidos com steppers +/− */}
+          <View style={styles.inputRow}>
+            <StepperInput
+              label="PESO"
+              value={weight}
+              onChange={setWeight}
+              suffix="kg"
+              step={2.5}
+              decimals={1}
+              keyboardType="decimal-pad"
+              flex={1.3}
+            />
+            <StepperInput
+              label="REPS"
+              value={reps}
+              onChange={setReps}
+              step={1}
+              decimals={0}
+              keyboardType="number-pad"
+              flex={1}
+            />
+            <StepperInput
+              label="RIR"
+              value={rir || '0'}
+              onChange={setRir}
+              step={1}
+              decimals={0}
+              min={0}
+              max={3}
+              keyboardType="number-pad"
+              flex={1}
+            />
+          </View>
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={[styles.resetBtn, saving && styles.actionBtnDisabled]}
+              onPress={handleReset}
+              disabled={saving}
+              hitSlop={8}
+            >
+              <Ionicons name="refresh" size={22} color="#A1A1AA" />
+            </Pressable>
+            <Pressable
+              style={[styles.saveBtn, saving && styles.actionBtnDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              <Text style={styles.saveBtnText}>
+                {saving ? 'Salvando...' : `Salvar série ${nextSetNumber}`}
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      )}
 
       {lastResult ? (
         <Text style={styles.savedFeedback}>
@@ -414,6 +447,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   blockTitle: { color: '#F5F5F7', fontSize: 17, fontWeight: '600', marginBottom: 12 },
+  blockPlan: { color: '#B4FF39', fontSize: 13, fontWeight: '500', marginTop: 4 },
+  blockMeta: { color: '#6B6B76', fontSize: 12, marginTop: 2 },
+  allDoneText: { color: '#22C55E', fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 12 },
   setsTable: { marginBottom: 12 },
   setRow: {
     flexDirection: 'row',

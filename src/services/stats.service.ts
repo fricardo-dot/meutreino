@@ -69,7 +69,7 @@ export const statsService = {
   async getVolumeByMuscleGroup(db: AppDatabase): Promise<MuscleGroupVolume[]> {
     return db.getAllAsync<MuscleGroupVolume>(
       `SELECT
-         e.muscle_group,
+         LOWER(TRIM(e.muscle_group)) AS muscle_group,
          COUNT(ss.id)              AS total_sets,
          COALESCE(SUM(ss.weight * ss.reps), 0) AS total_volume
        FROM session_sets ss
@@ -77,7 +77,7 @@ export const statsService = {
        JOIN exercises e ON e.id = se.exercise_id
        JOIN sessions s ON s.id = se.session_id
        WHERE s.status = 'concluida'
-       GROUP BY e.muscle_group
+       GROUP BY LOWER(TRIM(e.muscle_group))
        ORDER BY total_volume DESC;`,
     );
   },

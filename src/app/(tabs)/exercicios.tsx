@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
 import type { ExerciseRow, MuscleGroup } from '@/types/db';
@@ -46,6 +46,7 @@ export default function ExerciciosScreen() {
   const [filter, setFilter] = useState<MuscleGroup | null>(null);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ExerciseRow | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -65,22 +66,15 @@ export default function ExerciciosScreen() {
   }, [load]);
 
   function handleDeleteExercise(exercise: ExerciseRow) {
-    Alert.alert(
-      'Excluir exercício?',
-      `"${exercise.name}" será removido da sua lista. O histórico de treinos permanece.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            if (!db) return;
-            await exercisesRepository.archive(db, exercise.id);
-            void load();
-          },
-        },
-      ],
-    );
+    setPendingDelete(exercise);
+  }
+
+  async function confirmDelete() {
+    if (!db || !pendingDelete) return;
+    const exercise = pendingDelete;
+    setPendingDelete(null);
+    await exercisesRepository.archive(db, exercise.id);
+    void load();
   }
 
   return (
@@ -155,6 +149,17 @@ export default function ExerciciosScreen() {
           setCreating(false);
           void load();
         }}
+      />
+
+      <ConfirmDialog
+        visible={pendingDelete !== null}
+        title="Excluir exercício?"
+        message={pendingDelete ? `"${pendingDelete.name}" será removido da sua lista. O histórico de treinos permanece.` : ''}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
       />
     </View>
   );

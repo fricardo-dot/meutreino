@@ -3,7 +3,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { bodyWeightRepository } from '@/repositories/body-weight.repository';
 import { userProfileRepository } from '@/repositories/user-profile.repository';
@@ -38,6 +38,7 @@ export default function PerfilScreen() {
   const [prs, setPrs] = useState<Array<{ exercise_name: string; pr_type: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -63,6 +64,18 @@ export default function PerfilScreen() {
     setPrs(prRows);
     setLoading(false);
   }, [db, status]);
+
+  async function confirmReset() {
+    if (!db) return;
+    setShowResetConfirm(false);
+    await db.execAsync(`
+      DELETE FROM personal_records;
+      DELETE FROM session_sets;
+      DELETE FROM session_exercises;
+      DELETE FROM sessions;
+    `);
+    void load();
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -121,33 +134,22 @@ export default function PerfilScreen() {
       {(stats?.totalSessions ?? 0) > 0 ? (
         <Pressable
           style={styles.resetBtn}
-          onPress={() => {
-            Alert.alert(
-              'Resetar estatísticas?',
-              'Apaga TODAS as sessões, séries e recordes. Seus treinos (fichas) e exercícios NÃO são afetados. Esta ação não pode ser desfeita.',
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Resetar tudo',
-                  style: 'destructive',
-                  onPress: async () => {
-                    if (!db) return;
-                    await db.execAsync(`
-                      DELETE FROM personal_records;
-                      DELETE FROM session_sets;
-                      DELETE FROM session_exercises;
-                      DELETE FROM sessions;
-                    `);
-                    void load();
-                  },
-                },
-              ],
-            );
-          }}
+          onPress={() => setShowResetConfirm(true)}
         >
           <Text style={styles.resetBtnText}>Resetar estatísticas</Text>
         </Pressable>
       ) : null}
+
+      <ConfirmDialog
+        visible={showResetConfirm}
+        title="Resetar estatísticas?"
+        message="Apaga TODAS as sessões, séries e recordes. Seus treinos (fichas) e exercícios NÃO são afetados. Esta ação não pode ser desfeita."
+        confirmText="Resetar tudo"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
 
       {/* Volume por grupo muscular */}
       {muscleVolume.length > 0 ? (
@@ -385,7 +387,7 @@ function prLabel(type: string): string {
 
 function formatPR(type: string, value: number): string {
   if (type === 'max_reps') return `${value}`;
-  return `${value} kg`;
+  return `${Math.round(value * 10) / 10} kg`;
 }
 
 // ── Estilos ────────────────────────────────────────────────────────────────

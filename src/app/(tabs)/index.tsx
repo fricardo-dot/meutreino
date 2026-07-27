@@ -2,7 +2,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository } from '@/repositories/sessions.repository';
@@ -40,6 +40,8 @@ export default function CalendarioScreen() {
   const [starting, setStarting] = useState(false);
   const [pickerDate, setPickerDate] = useState<string | null>(null);
   const [cycleWorkouts, setCycleWorkouts] = useState<WorkoutRow[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -75,10 +77,7 @@ export default function CalendarioScreen() {
         await load();
       }
     } catch (e) {
-      Alert.alert(
-        'Não foi possível registrar',
-        e instanceof Error ? e.message : String(e),
-      );
+      setErrorMsg(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -115,10 +114,7 @@ export default function CalendarioScreen() {
       await reloadActive();
       router.push(`/registrar/${sessionId}`);
     } catch (e) {
-      Alert.alert(
-        'Não foi possível iniciar',
-        e instanceof Error ? e.message : String(e),
-      );
+      setErrorMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setStarting(false);
     }
@@ -126,21 +122,14 @@ export default function CalendarioScreen() {
 
   function handleDiscard() {
     if (!db || !activeSession) return;
-    Alert.alert(
-      'Descartar treino?',
-      'A sessão será cancelada. As séries registradas permanecem no histórico.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Descartar',
-          style: 'destructive',
-          onPress: async () => {
-            await sessionsRepository.cancelSession(db, activeSession.id);
-            await reloadActive();
-          },
-        },
-      ],
-    );
+    setShowDiscardConfirm(true);
+  }
+
+  async function confirmDiscard() {
+    if (!db || !activeSession) return;
+    setShowDiscardConfirm(false);
+    await sessionsRepository.cancelSession(db, activeSession.id);
+    await reloadActive();
   }
 
   if (loading) {
@@ -211,6 +200,27 @@ export default function CalendarioScreen() {
         workouts={cycleWorkouts}
         onClose={() => setPickerDate(null)}
         onPick={(workoutId) => pickerDate && handleMarkPast(pickerDate, workoutId)}
+      />
+
+      <ConfirmDialog
+        visible={errorMsg !== null}
+        title="Erro"
+        message={errorMsg ?? ''}
+        confirmText="OK"
+        cancelText="OK"
+        onConfirm={() => setErrorMsg(null)}
+        onCancel={() => setErrorMsg(null)}
+      />
+
+      <ConfirmDialog
+        visible={showDiscardConfirm}
+        title="Descartar treino?"
+        message="A sessão será cancelada. As séries registradas permanecem no histórico."
+        confirmText="Descartar"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmDiscard}
+        onCancel={() => setShowDiscardConfirm(false)}
       />
     </View>
   );

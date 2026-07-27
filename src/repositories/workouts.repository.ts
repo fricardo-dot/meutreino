@@ -10,13 +10,16 @@ import type { WorkoutInput, WorkoutRow } from '@/types/db';
  */
 export const workoutsRepository = {
   /**
-   * Lista fichas ativas, ordenadas por nome.
+   * Lista fichas ativas, ordenadas por cycle_order (NULLs por último, alfabético).
    */
   async listActive(db: AppDatabase): Promise<WorkoutRow[]> {
     return db.getAllAsync<WorkoutRow>(
       `SELECT * FROM workouts
        WHERE is_active = 1
-       ORDER BY name COLLATE NOCASE;`,
+       ORDER BY
+         CASE WHEN cycle_order IS NULL THEN 1 ELSE 0 END,
+         cycle_order NULLS LAST,
+         name COLLATE NOCASE;`,
     );
   },
 

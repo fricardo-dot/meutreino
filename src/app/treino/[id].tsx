@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
@@ -38,6 +38,7 @@ export default function TreinoDetalheScreen() {
   const [nameDraft, setNameDraft] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db || Number.isNaN(workoutId)) return;
@@ -88,10 +89,7 @@ export default function TreinoDetalheScreen() {
       const sessionId = await sessionsRepository.startSession(db, workout.id);
       router.replace(`/registrar/${sessionId}`);
     } catch (e) {
-      Alert.alert(
-        'Não foi possível iniciar',
-        e instanceof Error ? e.message : String(e),
-      );
+      setErrorMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setStarting(false);
     }
@@ -211,6 +209,16 @@ export default function TreinoDetalheScreen() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onPick={handleAddExercise}
+      />
+
+      <ConfirmDialog
+        visible={errorMsg !== null}
+        title="Erro"
+        message={errorMsg ?? ''}
+        confirmText="OK"
+        cancelText="OK"
+        onConfirm={() => setErrorMsg(null)}
+        onCancel={() => setErrorMsg(null)}
       />
     </View>
   );
