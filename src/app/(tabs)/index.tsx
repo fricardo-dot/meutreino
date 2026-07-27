@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -42,6 +43,7 @@ export default function CalendarioScreen() {
   const [cycleWorkouts, setCycleWorkouts] = useState<WorkoutRow[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [deletingSession, setDeletingSession] = useState<{ sessionId: number; dateISO: string } | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -132,6 +134,13 @@ export default function CalendarioScreen() {
     await reloadActive();
   }
 
+  async function confirmDeleteSession() {
+    if (!db || !deletingSession) return;
+    await sessionsRepository.deleteSession(db, deletingSession.sessionId);
+    setDeletingSession(null);
+    void load();
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -188,6 +197,7 @@ export default function CalendarioScreen() {
             onStart={handleStart}
             onMarkPast={(dateISO) => setPickerDate(dateISO)}
             onChooseWorkout={(dateISO) => setPickerDate(dateISO)}
+            onDeleteSession={(sessionId, dateISO) => setDeletingSession({ sessionId, dateISO })}
           />
         )}
         contentContainerStyle={{ padding: 16, paddingTop: 8 }}
@@ -222,6 +232,17 @@ export default function CalendarioScreen() {
         onConfirm={confirmDiscard}
         onCancel={() => setShowDiscardConfirm(false)}
       />
+
+      <ConfirmDialog
+        visible={deletingSession !== null}
+        title="Excluir treino deste dia?"
+        message="A sessão e todas as séries registradas serão permanentemente removidas. O dia voltará a ficar disponível pra registrar outro treino."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmDeleteSession}
+        onCancel={() => setDeletingSession(null)}
+      />
     </View>
   );
 }
@@ -236,6 +257,7 @@ function DayCard({
   onStart,
   onMarkPast,
   onChooseWorkout,
+  onDeleteSession,
 }: {
   day: CalendarDay;
   hasActiveSession: boolean;
@@ -243,6 +265,7 @@ function DayCard({
   onStart: (workoutId: number) => void;
   onMarkPast: (dateISO: string) => void;
   onChooseWorkout?: (dateISO: string) => void;
+  onDeleteSession?: (sessionId: number, dateISO: string) => void;
 }) {
   const isToday = day.isToday;
   const isPastNoSession = day.status === 'no_session';
@@ -286,13 +309,22 @@ function DayCard({
 
       {/* Conteúdo por status */}
       {day.status === 'completed' && day.sessionId ? (
-        <Pressable
-          onPress={() => router.push(`/registrar/${day.sessionId}`)}
-          style={styles.completedBody}
-        >
-          <Text style={styles.workoutName}>{day.workoutName}</Text>
-          <Text style={styles.tapHint}>Toque para ver o treino</Text>
-        </Pressable>
+        <View style={styles.completedBody}>
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => router.push(`/registrar/${day.sessionId}`)}
+          >
+            <Text style={styles.workoutName}>{day.workoutName}</Text>
+            <Text style={styles.tapHint}>Toque para ver o treino</Text>
+          </Pressable>
+          <Pressable
+            style={styles.deleteSessionBtn}
+            onPress={() => onDeleteSession?.(day.sessionId!, day.date)}
+            hitSlop={8}
+          >
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          </Pressable>
+        </View>
       ) : day.status === 'today' && !hasActiveSession && day.suggestedWorkoutId ? (
         <View>
           <Text style={styles.workoutName}>{day.workoutName ?? 'Treino'}</Text>
@@ -479,7 +511,11 @@ const styles = StyleSheet.create({
   todayBadge: { color: '#B4FF39', fontSize: 11, fontWeight: '700' },
   badgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   completedBadge: { color: '#22C55E', fontSize: 11, fontWeight: '600' },
-  completedBody: { marginTop: 4 },
+  completedBody: { marginTop: 4, flexDirection: 'row', alignItems: 'center' },
+  deleteSessionBtn: {
+    paddingLeft: 12,
+    paddingVertical: 4,
+  },
   workoutName: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
   tapHint: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
   suggestedHint: { color: '#B4FF39', fontSize: 13, marginTop: 2, fontWeight: '500' },

@@ -245,6 +245,25 @@ export const sessionsRepository = {
   },
 
   /**
+   * Deleta PERMANENTEMENTE uma sessão e todos os dados relacionados
+   * (session_exercises, session_sets, personal_records).
+   *
+   * Cascata via FK ON DELETE CASCADE já configurada no schema.
+   * PRs precisam ser deletados explicitamente pois usam ON DELETE RESTRICT.
+   *
+   * Usado quando o usuário registrou o treino errado e quer remover tudo.
+   */
+  async deleteSession(db: AppDatabase, sessionId: number): Promise<void> {
+    // Deleta PRs associados primeiro (têm RESTRICT, não CASCADE).
+    await db.runAsync(
+      'DELETE FROM personal_records WHERE session_id = ?;',
+      [sessionId],
+    );
+    // session_sets, session_exercises e sessions caem em cascata.
+    await db.runAsync('DELETE FROM sessions WHERE id = ?;', [sessionId]);
+  },
+
+  /**
    * Última sessão concluída (mais recente). Usada pelo calendário pra
    * calcular o próximo treino do ciclo.
    */
