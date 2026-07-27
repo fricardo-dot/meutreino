@@ -351,3 +351,25 @@ export const SQL_MIGRATION_V7 = /* sql */ `
 
   CREATE INDEX IF NOT EXISTS idx_body_weight_date ON body_weight_entries(date);
 `;
+
+/**
+ * v8 — Programação semanal de treinos (scheduled_workouts).
+ *
+ * Permite que o usuário pré-programe qual treino fará em cada dia da semana.
+ * day_of_week: 0=Segunda, 1=Terça, 2=Quarta, 3=Quinta, 4=Sexta, 5=Sábado, 6=Domingo.
+ * is_rest_day: 1 = marcado como descanso (sem treino); 0 = treino programado.
+ * UNIQUE(week_start_date, day_of_week): 1 entrada por dia por semana.
+ */
+export const SQL_MIGRATION_V8 = /* sql */ `
+  CREATE TABLE IF NOT EXISTS scheduled_workouts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    week_start_date TEXT NOT NULL,
+    day_of_week     INTEGER NOT NULL CHECK(day_of_week BETWEEN 0 AND 6),
+    workout_id      INTEGER REFERENCES workouts(id) ON DELETE CASCADE,
+    is_rest_day     INTEGER NOT NULL DEFAULT 0 CHECK(is_rest_day IN (0, 1)),
+    created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(week_start_date, day_of_week)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_scheduled_week ON scheduled_workouts(week_start_date);
+`;

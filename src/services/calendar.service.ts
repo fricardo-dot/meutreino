@@ -1,7 +1,7 @@
 import type { AppDatabase } from '@/types/app-database';
 
+import { scheduledWorkoutsRepository, type ScheduledWorkoutWithPlan } from '@/repositories/scheduled-workouts.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
-import { workoutsRepository } from '@/repositories/workouts.repository';
 import { trainingCycleService } from './training-cycle.service';
 
 /**
@@ -17,24 +17,35 @@ export interface CalendarDay {
   dayNumber: string;
   /** True se este dia é hoje. */
   isToday: boolean;
+  /** True se é um dia passado (não editável). */
+  isPast: boolean;
   /**
-   * - 'completed'   → houve sessão concluída neste dia
-   * - 'no_session'  → dia passado sem treino registrado ("Sem treino")
-   * - 'today'       → hoje (pode sugerir próximo do ciclo)
-   * - 'upcoming'    → dia futuro (ainda não definido)
+   * - 'completed' → houve sessão concluída neste dia
+   * - 'scheduled' → treino programado (futuro ou hoje não-iniciado)
+   * - 'rest'      → dia de descanso programado
+   * - 'empty'     → sem programação (livre pra escolher)
+   * - 'no_session'→ dia passado sem treino registrado
    */
-  status: 'completed' | 'no_session' | 'today' | 'upcoming';
-  /** Nome do treino feito (se completed) ou sugerido (se today). */
+  status: 'completed' | 'scheduled' | 'rest' | 'empty' | 'no_session';
+  /** Nome do treino (feito, programado ou null). */
   workoutName: string | null;
-  /** ID do workout para iniciar (se today) ou já feito (se completed). */
+  /** ID do workout. */
   workoutId: number | null;
   /** ID da sessão concluída (se completed) — para abrir o diário. */
   sessionId: number | null;
-  /** ID do workout sugerido para hoje (próximo do ciclo). */
-  suggestedWorkoutId: number | null;
+  /** Índice do dia na semana (0=Seg, 1=Ter...). */
+  dayOfWeek: number;
 }
 
-const DAY_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+/** Informações sobre o estado da semana (para UI mostrar banner etc). */
+export interface WeekStatus {
+  /** A semana tem programação (scheduled_workouts)? */
+  hasSchedule: boolean;
+  /** ISO date da segunda-feira da semana. */
+  weekStartISO: string;
+}
+
+const DAY_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -43,14 +54,14 @@ const MONTH_NAMES = [
 /**
  * CalendarService — monta a semana visível do calendário.
  *
- * Toda a lógica mora aqui; a UI só renderiza o array retornado.
+ * 3 camadas de prioridade (em ordem):
+ *  1. Sessão concluída → 'completed'
+ *  2. Programação da semana → 'scheduled' ou 'rest'
+ *  3. Sem nada → 'empty' (futuro) ou 'no_session' (passado)
  */
 export const calendarService = {
   /**
    * Monta os 7 dias (Seg-Dom) de uma semana, começando em `weekStart`.
-   *
-   * @param weekStart objeto Date representando a segunda-feira da semana.
-   * @param db conexão do banco.
    */
   async buildWeek(db: AppDatabase, weekStart: Date): Promise<CalendarDay[]> {
     const days: CalendarDay[] = [];
@@ -59,77 +70,130 @@ export const calendarService = {
     const fromISO = toISODate(weekStart) + ' 00:00:00';
     const weekEnd = addDays(weekStart, 7);
     const toISO = toISODate(weekEnd) + ' 00:00:00';
+    const weekStartISO = toISODate(weekStart);
 
-    // Sessões concluídas da semana visível.
+    // Camada 1: Sessões concluídas da semana.
     const sessions = await sessionsRepository.listByDateRange(db, fromISO, toISO);
 
-    // Próximo treino sugerido (calculado uma vez; só aparece em "hoje").
-    const lastCompleted = await sessionsRepository.getLastCompleted(db);
-    const suggestedWorkoutId = await trainingCycleService.getNextWorkoutId(
-      db,
-      lastCompleted?.workout_id ?? null,
-    );
-    let suggestedName: string | null = null;
-    if (suggestedWorkoutId !== null) {
-      const w = await workoutsRepository.getById(db, suggestedWorkoutId);
-      suggestedName = w?.name ?? null;
-    }
+    // Camada 2: Programação da semana (scheduled_workouts).
+    const schedule = await scheduledWorkoutsRepository.listByWeek(db, weekStartISO);
 
     const todayISO = toISODate(new Date());
 
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i);
       const dateISO = toISODate(date);
-      const dayOfWeek = date.getDay();
       const isToday = dateISO === todayISO;
+      const isPast = dateISO < todayISO;
 
-      // Sessão concluída neste dia?
+      // Camada 1: sessão concluída?
       const session = sessions.find((s) => s.started_at.slice(0, 10) === dateISO);
 
       if (session) {
-        // Sessão concluída sempre é 'completed', mesmo que seja hoje.
-        // 'today' (sem sessão) é o caso de treino sugerido ainda não iniciado.
         days.push({
           date: dateISO,
-          dayLabel: DAY_LABELS[dayOfWeek],
+          dayLabel: DAY_LABELS[i],
           dayNumber: String(date.getDate()),
           isToday,
+          isPast,
           status: 'completed',
           workoutName: session.name,
           workoutId: session.workout_id,
           sessionId: session.id,
-          suggestedWorkoutId: null,
+          dayOfWeek: i,
         });
-      } else if (isToday) {
+        continue;
+      }
+
+      // Camada 2: programação (sempre, mesmo em dias passados que não treinei).
+      const scheduled = schedule.find((s) => s.day_of_week === i);
+
+      if (scheduled) {
+        if (scheduled.is_rest_day === 1) {
+          days.push({
+            date: dateISO,
+            dayLabel: DAY_LABELS[i],
+            dayNumber: String(date.getDate()),
+            isToday,
+            isPast,
+            status: 'rest',
+            workoutName: null,
+            workoutId: null,
+            sessionId: null,
+            dayOfWeek: i,
+          });
+        } else {
+          days.push({
+            date: dateISO,
+            dayLabel: DAY_LABELS[i],
+            dayNumber: String(date.getDate()),
+            isToday,
+            isPast,
+            status: 'scheduled',
+            workoutName: scheduled.workout_name,
+            workoutId: scheduled.workout_id,
+            sessionId: null,
+            dayOfWeek: i,
+          });
+        }
+        continue;
+      }
+
+      // Camada 3: sem sessão e sem programação.
+      if (isPast) {
         days.push({
           date: dateISO,
-          dayLabel: DAY_LABELS[dayOfWeek],
+          dayLabel: DAY_LABELS[i],
           dayNumber: String(date.getDate()),
-          isToday: true,
-          status: 'today',
-          workoutName: suggestedName,
-          workoutId: suggestedWorkoutId,
-          sessionId: null,
-          suggestedWorkoutId,
-        });
-      } else {
-        // Passado sem sessão → "Sem treino". Futuro → "upcoming".
-        const isPast = dateISO < todayISO;
-        days.push({
-          date: dateISO,
-          dayLabel: DAY_LABELS[dayOfWeek],
-          dayNumber: String(date.getDate()),
-          isToday: false,
-          status: isPast ? 'no_session' : 'upcoming',
+          isToday,
+          isPast,
+          status: 'no_session',
           workoutName: null,
           workoutId: null,
           sessionId: null,
-          suggestedWorkoutId: null,
+          dayOfWeek: i,
+        });
+      } else {
+        days.push({
+          date: dateISO,
+          dayLabel: DAY_LABELS[i],
+          dayNumber: String(date.getDate()),
+          isToday,
+          isPast,
+          status: 'empty',
+          workoutName: null,
+          workoutId: null,
+          sessionId: null,
+          dayOfWeek: i,
         });
       }
     }
 
     return days;
+  },
+
+  /**
+   * Verifica o estado da semana (tem programação?).
+   */
+  async getWeekStatus(db: AppDatabase, weekStart: Date): Promise<WeekStatus> {
+    const weekStartISO = toISODate(weekStart);
+    const hasSchedule = await scheduledWorkoutsRepository.hasSchedule(db, weekStartISO);
+    return { hasSchedule, weekStartISO };
+  },
+
+  /**
+   * Auto-preenche a semana distribuíndo o ciclo a partir de um workout.
+   *
+   * @param startWorkoutId null = reiniciar (do primeiro), number = continuar
+   */
+  async autoFillWeek(
+    db: AppDatabase,
+    weekStart: Date,
+    startWorkoutId: number | null,
+  ): Promise<void> {
+    const weekStartISO = toISODate(weekStart);
+    const sequence = await trainingCycleService.getCycleSequence(db, startWorkoutId);
+    await scheduledWorkoutsRepository.autoFillWeek(db, weekStartISO, sequence);
   },
 
   /**

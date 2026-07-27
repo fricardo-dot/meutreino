@@ -83,4 +83,35 @@ export const trainingCycleService = {
        ORDER BY cycle_order;`,
     );
   },
+
+  /**
+   * Retorna a sequência de workout IDs do ciclo começando a partir de uma
+   * posição específica (rodando). Usado pelo auto-fill da programação semanal.
+   *
+   * Ex: ciclo [A, B, C, D, E], começar do C → [C, D, E, A, B].
+   *
+   * @param startWorkoutId ID do workout que deve ser o primeiro da sequência.
+   *                       Se null, começa do primeiro do ciclo.
+   * @returns array de workout IDs na ordem rodada (até 5).
+   */
+  async getCycleSequence(
+    db: AppDatabase,
+    startWorkoutId: number | null,
+  ): Promise<number[]> {
+    const all = await this.listCycleWorkouts(db);
+    if (all.length === 0) return [];
+
+    let startIndex = 0;
+    if (startWorkoutId !== null) {
+      const found = all.findIndex((w) => w.id === startWorkoutId);
+      if (found >= 0) startIndex = found;
+    }
+
+    // Roda o array começando de startIndex.
+    const result: number[] = [];
+    for (let i = 0; i < all.length; i++) {
+      result.push(all[(startIndex + i) % all.length].id);
+    }
+    return result;
+  },
 };
