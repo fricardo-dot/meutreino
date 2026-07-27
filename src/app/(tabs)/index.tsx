@@ -183,16 +183,45 @@ export default function CalendarioScreen() {
   ) {
     if (!db || !weekStatus) return;
     try {
+      // Salva o treino escolhido neste dia.
       await scheduledWorkoutsRepository.scheduleWorkout(
         db,
         weekStatus.weekStartISO,
         dayOfWeek,
         workoutId,
       );
+      // Reprograma os dias SEGUINTES (que ainda não são descanso) com a
+      // sequência correta do ciclo a partir do treino escolhido.
+      await rescheduleFollowingDays(dayOfWeek, workoutId);
       setSchedulePicker(null);
       await load();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /**
+   * Reprograma os dias seguintes da semana (dayOfWeek+1 em diante) que não
+   * sejam descanso, seguindo a sequência do ciclo a partir do workoutId.
+   */
+  async function rescheduleFollowingDays(fromDay: number, startWorkoutId: number) {
+    if (!db || !weekStatus) return;
+    const sequence = await trainingCycleService.getCycleSequence(db, startWorkoutId);
+    // sequence[0] = o próprio dia, sequence[1] = próximo, etc.
+    for (let d = fromDay + 1; d <= 4; d++) {
+      // Só reprograma dias úteis (Seg-Sex) que NÃO estão marcados como descanso.
+      const existing = await scheduledWorkoutsRepository.listByWeek(db, weekStatus.weekStartISO);
+      const day = existing.find((s) => s.day_of_week === d);
+      if (day && day.is_rest_day === 1) continue; // pula dias de descanso
+      const seqIndex = (d - fromDay) % sequence.length;
+      if (sequence[seqIndex] != null) {
+        await scheduledWorkoutsRepository.scheduleWorkout(
+          db,
+          weekStatus.weekStartISO,
+          d,
+          sequence[seqIndex],
+        );
+      }
     }
   }
 
