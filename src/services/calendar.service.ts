@@ -87,12 +87,14 @@ export const calendarService = {
       const session = sessions.find((s) => s.started_at.slice(0, 10) === dateISO);
 
       if (session) {
+        // Sessão concluída sempre é 'completed', mesmo que seja hoje.
+        // 'today' (sem sessão) é o caso de treino sugerido ainda não iniciado.
         days.push({
           date: dateISO,
           dayLabel: DAY_LABELS[dayOfWeek],
           dayNumber: String(date.getDate()),
           isToday,
-          status: isToday ? 'today' : 'completed',
+          status: 'completed',
           workoutName: session.name,
           workoutId: session.workout_id,
           sessionId: session.id,

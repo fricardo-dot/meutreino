@@ -272,7 +272,12 @@ function DayCard({
         <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
           {day.dayLabel} {day.dayNumber}
         </Text>
-        {isToday ? (
+        {isToday && day.status === 'completed' ? (
+          <View style={styles.badgeRow}>
+            <Text style={styles.todayBadge}>★ HOJE</Text>
+            <Text style={styles.completedBadge}>✔ Concluído</Text>
+          </View>
+        ) : isToday ? (
           <Text style={styles.todayBadge}>★ HOJE</Text>
         ) : day.status === 'completed' ? (
           <Text style={styles.completedBadge}>✔ Concluído</Text>
@@ -472,6 +477,7 @@ const styles = StyleSheet.create({
   dayLabel: { color: '#A1A1AA', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   dayLabelToday: { color: '#B4FF39' },
   todayBadge: { color: '#B4FF39', fontSize: 11, fontWeight: '700' },
+  badgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   completedBadge: { color: '#22C55E', fontSize: 11, fontWeight: '600' },
   completedBody: { marginTop: 4 },
   workoutName: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
