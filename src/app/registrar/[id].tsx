@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { StepperInput } from '@/components/StepperInput';
 import { useRestTimer } from '@/hooks/useRestTimer';
 import { useDatabase } from '@/hooks/useDatabase';
@@ -206,6 +207,7 @@ function ExerciseBlock({
   const [rir, setRir] = useState('');
   const [lastResult, setLastResult] = useState<SaveSetResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const nextSetNumber = sets.length + 1;
 
@@ -264,29 +266,22 @@ function ExerciseBlock({
       setLastResult(null);
       return;
     }
-    Alert.alert(
-      'Apagar todas as séries?',
-      `Isto vai remover as ${sets.length} séries já registradas deste exercício. Os inputs também serão zerados. Esta ação não pode ser desfeita.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Apagar tudo',
-          style: 'destructive',
-          onPress: async () => {
-            if (!db) return;
-            await sessionSetsRepository.removeAllFromSessionExercise(
-              db,
-              sessionExercise.id,
-            );
-            setWeight('0');
-            setReps('0');
-            setRir('');
-            setLastResult(null);
-            onSaved();
-          },
-        },
-      ],
+    // Com séries: abre confirmação customizada (Alert.alert não funciona em PWA iOS).
+    setShowResetConfirm(true);
+  }
+
+  async function confirmReset() {
+    if (!db) return;
+    await sessionSetsRepository.removeAllFromSessionExercise(
+      db,
+      sessionExercise.id,
     );
+    setWeight('0');
+    setReps('0');
+    setRir('');
+    setLastResult(null);
+    setShowResetConfirm(false);
+    onSaved();
   }
 
   return (
@@ -367,6 +362,17 @@ function ExerciseBlock({
           {lastResult.brokenPRs.length > 0 ? `  🏆 PR: ${lastResult.brokenPRs.join(', ')}` : ''}
         </Text>
       ) : null}
+
+      <ConfirmDialog
+        visible={showResetConfirm}
+        title="Apagar todas as séries?"
+        message={`Isto vai remover as ${sets.length} séries já registradas deste exercício. Os inputs também serão zerados. Esta ação não pode ser desfeita.`}
+        confirmText="Apagar tudo"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </View>
   );
 }
