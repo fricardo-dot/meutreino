@@ -371,7 +371,15 @@ export default function CalendarioScreen() {
             hasActiveSession={!!activeSession}
             starting={starting}
             onStart={handleStart}
-            onMarkPast={(dateISO) => setPastPicker(dateISO)}
+            onMarkPast={(dateISO, workoutId) => {
+              if (workoutId) {
+                // Veio com workoutId — registra direto sem abrir picker.
+                void handleMarkPast(dateISO, workoutId);
+              } else {
+                // Sem workoutId — abre picker pra escolher qual treino.
+                setPastPicker(dateISO);
+              }
+            }}
             onOpenSchedulePicker={(dateISO, dayOfWeek) =>
               setSchedulePicker({ dateISO, dayOfWeek })
             }
@@ -474,7 +482,7 @@ function DayCard({
   hasActiveSession: boolean;
   starting: boolean;
   onStart: (workoutId: number) => void;
-  onMarkPast: (dateISO: string) => void;
+  onMarkPast: (dateISO: string, workoutId?: number) => void;
   onOpenSchedulePicker: (dateISO: string, dayOfWeek: number) => void;
   onDeleteSession: (sessionId: number, dateISO: string) => void;
 }) {
@@ -568,18 +576,28 @@ function DayCard({
             </View>
           )
         ) : day.isPast ? (
-          // Passado: tinha programação mas não treinou — pode trocar.
-          <View style={styles.scheduledFutureBody}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.workoutNameMuted}>{day.workoutName}</Text>
-              <Text style={styles.notTrainedHint}>não treinado</Text>
+          // Passado: tinha programação mas não treinou — pode marcar como feito ou trocar.
+          <View>
+            <View style={styles.scheduledFutureBody}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.workoutNameMuted}>{day.workoutName}</Text>
+                <Text style={styles.notTrainedHint}>não treinado</Text>
+              </View>
+              <Pressable
+                style={styles.swapBtn}
+                onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
+              >
+                <Text style={styles.swapBtnText}>Trocar</Text>
+              </Pressable>
             </View>
-            <Pressable
-              style={styles.swapBtn}
-              onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
-            >
-              <Text style={styles.swapBtnText}>Trocar</Text>
-            </Pressable>
+            {day.workoutId ? (
+              <Pressable
+                style={styles.markPastBtn}
+                onPress={() => onMarkPast(day.date, day.workoutId!)}
+              >
+                <Text style={styles.markPastBtnText}>✓ Marcar como treinado</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : (
           // Futuro: programado, pode trocar.
@@ -961,6 +979,14 @@ const styles = StyleSheet.create({
   tapHint: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
   scheduledHint: { color: '#B4FF39', fontSize: 13, marginTop: 2, fontWeight: '500' },
   notTrainedHint: { color: '#6B6B76', fontSize: 12, marginTop: 2, fontStyle: 'italic' },
+  markPastBtn: {
+    marginTop: 8,
+    backgroundColor: 'rgba(180, 255, 57, 0.15)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  markPastBtnText: { color: '#B4FF39', fontSize: 13, fontWeight: '600' },
   scheduledFutureBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   // ── Botão "Trocar" (texto, nos dias programados) ────────────────────────
