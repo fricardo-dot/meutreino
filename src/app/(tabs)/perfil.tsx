@@ -19,6 +19,8 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { bodyWeightRepository } from '@/repositories/body-weight.repository';
 import { userProfileRepository } from '@/repositories/user-profile.repository';
 import { backupService } from '@/services/backup.service';
+import { calendarService } from '@/services/calendar.service';
+import { generateWeeklyReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
 
@@ -46,6 +48,7 @@ export default function PerfilScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importData, setImportData] = useState<string | null>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
   const [importSummaryMsg, setImportSummaryMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -95,6 +98,39 @@ export default function PerfilScreen() {
       URL.revokeObjectURL(url);
     } catch (error) {
       setErrorMsg(`Erro ao exportar: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function handleGenerateReport() {
+    if (!db) return;
+    setGeneratingReport(true);
+    try {
+      const weekStart = calendarService.getWeekStart(new Date());
+      const markdown = await generateWeeklyReport(db, weekStart, 1);
+
+      if (Platform.OS === 'web') {
+        // Na web: copia pra área de transferência + baixa arquivo.
+        try {
+          await navigator.clipboard.writeText(markdown);
+        } catch {
+          // Clipboard pode falhar sem HTTPS — ignora.
+        }
+        const blob = new Blob([markdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const today = new Date().toISOString().slice(0, 10);
+        a.download = `meutreino-relatorio-${today}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setErrorMsg('Relatório gerado! Arquivo baixado e copiado pra área de transferência.');
+      } else {
+        setErrorMsg('Relatório disponível apenas na versão web por enquanto.');
+      }
+    } catch (error) {
+      setErrorMsg(`Erro ao gerar relatório: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setGeneratingReport(false);
     }
   }
 
@@ -260,6 +296,22 @@ export default function PerfilScreen() {
           </View>
         </>
       ) : null}
+
+      {/* Relatório da semana em Markdown */}
+      <SectionTitle>Relatório da semana</SectionTitle>
+      <Text style={styles.reportHint}>
+        Gera um resumo dos treinos da semana em texto formatado (Markdown)
+        pra você enviar à sua IA e receber feedback.
+      </Text>
+      <Pressable
+        style={[styles.exportBtn, generatingReport && { opacity: 0.5 }]}
+        onPress={handleGenerateReport}
+        disabled={generatingReport}
+      >
+        <Text style={styles.exportBtnText}>
+          {generatingReport ? 'Gerando...' : '📋 Gerar relatório'}
+        </Text>
+      </Pressable>
 
       {/* Backup dos dados */}
       <SectionTitle>Backup dos dados</SectionTitle>
@@ -634,6 +686,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backupRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  reportHint: { color: '#6B6B76', fontSize: 13, lineHeight: 18, marginBottom: 10 },
   exportBtn: {
     backgroundColor: '#B4FF39',
     borderRadius: 12,

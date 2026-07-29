@@ -568,10 +568,16 @@ function DayCard({
             </View>
           )
         ) : day.isPast ? (
-          // Passado: tinha programação mas não treinou.
+          // Passado: tinha programação mas não treinou — pode trocar/descansar.
           <View>
             <Text style={styles.workoutNameMuted}>{day.workoutName}</Text>
             <Text style={styles.notTrainedHint}>não treinado</Text>
+            <Pressable
+              style={styles.swapBtn}
+              onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
+            >
+              <Text style={styles.swapBtnText}>Trocar</Text>
+            </Pressable>
           </View>
         ) : (
           // Futuro: programado, pode trocar.
