@@ -568,10 +568,12 @@ function DayCard({
             </View>
           )
         ) : day.isPast ? (
-          // Passado: tinha programação mas não treinou — pode trocar/descansar.
-          <View>
-            <Text style={styles.workoutNameMuted}>{day.workoutName}</Text>
-            <Text style={styles.notTrainedHint}>não treinado</Text>
+          // Passado: tinha programação mas não treinou — pode trocar.
+          <View style={styles.scheduledFutureBody}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.workoutNameMuted}>{day.workoutName}</Text>
+              <Text style={styles.notTrainedHint}>não treinado</Text>
+            </View>
             <Pressable
               style={styles.swapBtn}
               onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
@@ -594,14 +596,12 @@ function DayCard({
       ) : day.status === 'rest' ? (
         <View style={styles.restBody}>
           <Text style={styles.restText}>😴 Descanso</Text>
-          {!day.isPast ? (
-            <Pressable
-              style={styles.swapBtn}
-              onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
-            >
-              <Text style={styles.swapBtnText}>Trocar</Text>
-            </Pressable>
-          ) : null}
+          <Pressable
+            style={styles.swapBtn}
+            onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
+          >
+            <Text style={styles.swapBtnText}>Trocar</Text>
+          </Pressable>
         </View>
       ) : day.status === 'empty' ? (
         // Futuro sem programação: escolher treino ou descanso.
