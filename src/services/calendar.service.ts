@@ -87,7 +87,12 @@ export const calendarService = {
       const isPast = dateISO < todayISO;
 
       // Camada 1: sessão concluída?
-      const session = sessions.find((s) => s.started_at.slice(0, 10) === dateISO);
+      // Importante: started_at vem em UTC do SQLite. Precisa converter pra
+      // data local antes de comparar, senão treinos noturnos (após 21h no
+      // Brasil, UTC-3) aparecem no dia seguinte.
+      const session = sessions.find(
+        (s) => utcToLocalISODate(s.started_at) === dateISO,
+      );
 
       if (session) {
         days.push({
@@ -232,4 +237,21 @@ function toISODate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Converte um timestamp UTC do SQLite ("2026-07-29 00:30:00") pra data
+ * local no formato "YYYY-MM-DD".
+ *
+ * O SQLite guarda CURRENT_TIMESTAMP em UTC. Se comparar direto com a data
+ * local, treinos noturnos (após 21h no Brasil, UTC-3) aparecem no dia
+ * seguinte. Esta função converte corretamente.
+ */
+function utcToLocalISODate(utcTimestamp: string): string {
+  // O SQLite retorna "2026-07-29 00:30:00" (sem timezone info).
+  // Interpretamos como UTC adicionando "Z" ou usando Date diretamente.
+  const normalized = utcTimestamp.replace(' ', 'T');
+  const hasTZ = normalized.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(normalized);
+  const date = hasTZ ? new Date(normalized) : new Date(normalized + 'Z');
+  return toISODate(date);
 }
