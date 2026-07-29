@@ -66,14 +66,20 @@ export const calendarService = {
   async buildWeek(db: AppDatabase, weekStart: Date): Promise<CalendarDay[]> {
     const days: CalendarDay[] = [];
 
-    // Limites da semana em ISO (para a query).
-    const fromISO = toISODate(weekStart) + ' 00:00:00';
-    const weekEnd = addDays(weekStart, 7);
-    const toISO = toISODate(weekEnd) + ' 00:00:00';
     const weekStartISO = toISODate(weekStart);
+    const weekEndDate = addDays(weekStart, 7);
+    const weekEndISO = toISODate(weekEndDate);
 
-    // Camada 1: Sessões concluídas da semana.
-    const sessions = await sessionsRepository.listByDateRange(db, fromISO, toISO);
+    // Busca TODAS as sessões concluídas (sem filtro de data no SQL).
+    // A filtragem por data é feita no JS, convertendo UTC → local corretamente.
+    // Isso evita bugs de timezone onde treinos noturnos somem.
+    const allSessions = await sessionsRepository.listRecent(db, 100);
+
+    // Filtra sessões que pertencem a esta semana (em horário local).
+    const sessions = allSessions.filter((s) => {
+      const localDate = utcToLocalISODate(s.started_at);
+      return localDate >= weekStartISO && localDate < weekEndISO;
+    });
 
     // Camada 2: Programação da semana (scheduled_workouts).
     const schedule = await scheduledWorkoutsRepository.listByWeek(db, weekStartISO);
