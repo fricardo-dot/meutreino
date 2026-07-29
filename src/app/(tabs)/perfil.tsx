@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,9 +14,11 @@ import {
 } from 'react-native';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { WeightChart } from '@/components/WeightChart';
 import { useDatabase } from '@/hooks/useDatabase';
 import { bodyWeightRepository } from '@/repositories/body-weight.repository';
 import { userProfileRepository } from '@/repositories/user-profile.repository';
+import { backupService } from '@/services/backup.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
 
@@ -39,6 +42,11 @@ export default function PerfilScreen() {
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [weightHistory, setWeightHistory] = useState<BodyWeightEntryRow[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [importData, setImportData] = useState<string | null>(null);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [importSummaryMsg, setImportSummaryMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -53,6 +61,10 @@ export default function PerfilScreen() {
     setStats(s);
     setMuscleVolume(mv);
 
+    // Histórico de peso (últimos 30) para o gráfico de evolução.
+    const wh = await bodyWeightRepository.listHistory(db, 30);
+    setWeightHistory(wh);
+
     // PRs vigentes: busca todos os is_current=1 com nome do exercício.
     const prRows = await db.getAllAsync<{ exercise_name: string; pr_type: string; value: number }>(
       `SELECT e.name AS exercise_name, pr.pr_type, pr.value
@@ -64,6 +76,60 @@ export default function PerfilScreen() {
     setPrs(prRows);
     setLoading(false);
   }, [db, status]);
+
+  async function handleExport() {
+    if (!db) return;
+    if (Platform.OS !== 'web') {
+      setErrorMsg('Exportação disponível apenas na versão web por enquanto.');
+      return;
+    }
+    try {
+      const json = await backupService.exportData(db);
+      // Create a blob and download it (works on web)
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `meutreino-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setErrorMsg(`Erro ao exportar: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function handleImportClick() {
+    if (Platform.OS !== 'web') {
+      setErrorMsg('Importação disponível apenas na versão web por enquanto.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      setImportData(text);
+      setShowImportConfirm(true);
+    };
+    input.click();
+  }
+
+  async function confirmImport() {
+    if (!db || !importData) return;
+    setShowImportConfirm(false);
+    try {
+      const summary = await backupService.importData(db, importData);
+      const total = Object.values(summary).reduce((acc, n) => acc + (n ?? 0), 0);
+      setImportData(null);
+      setImportSummaryMsg(`Importação concluída: ${total} registro(s) restaurado(s).`);
+      void load();
+    } catch (error) {
+      setImportData(null);
+      setErrorMsg(`Erro ao importar: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   async function confirmReset() {
     if (!db) return;
@@ -119,6 +185,15 @@ export default function PerfilScreen() {
           {Math.abs(latestWeight.weight_kg - profile.target_weight_kg).toFixed(1)} kg
         </Text>
       ) : null}
+
+      {/* Gráfico de evolução do peso */}
+      <SectionTitle>Evolução do peso</SectionTitle>
+      <View style={styles.chartCard}>
+        <WeightChart
+          entries={weightHistory.map((e) => ({ date: e.date, weight_kg: e.weight_kg }))}
+          targetWeight={profile?.target_weight_kg}
+        />
+      </View>
 
       {/* Estatísticas gerais — cards grandes */}
       <SectionTitle>Estatísticas</SectionTitle>
@@ -185,6 +260,50 @@ export default function PerfilScreen() {
           </View>
         </>
       ) : null}
+
+      {/* Backup dos dados */}
+      <SectionTitle>Backup dos dados</SectionTitle>
+      <View style={styles.backupRow}>
+        <Pressable style={styles.exportBtn} onPress={handleExport}>
+          <Text style={styles.exportBtnText}>Exportar</Text>
+        </Pressable>
+        <Pressable style={styles.importBtn} onPress={handleImportClick}>
+          <Text style={styles.importBtnText}>Importar</Text>
+        </Pressable>
+      </View>
+
+      {/* Dialogs de erro / importação */}
+      <ConfirmDialog
+        visible={errorMsg !== null}
+        title="Aviso"
+        message={errorMsg ?? ''}
+        confirmText="OK"
+        cancelText="Cancelar"
+        onConfirm={() => setErrorMsg(null)}
+        onCancel={() => setErrorMsg(null)}
+      />
+      <ConfirmDialog
+        visible={showImportConfirm}
+        title="Importar backup?"
+        message="Substituirá todos os dados atuais."
+        confirmText="Importar"
+        cancelText="Cancelar"
+        destructive
+        onConfirm={confirmImport}
+        onCancel={() => {
+          setShowImportConfirm(false);
+          setImportData(null);
+        }}
+      />
+      <ConfirmDialog
+        visible={importSummaryMsg !== null}
+        title="Backup importado"
+        message={importSummaryMsg ?? ''}
+        confirmText="OK"
+        cancelText="Fechar"
+        onConfirm={() => setImportSummaryMsg(null)}
+        onCancel={() => setImportSummaryMsg(null)}
+      />
 
       {/* Pesagem modal */}
       {/* Modal unificado: nome, altura, alvo, pesagem de hoje */}
@@ -505,4 +624,32 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   modalSaveBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  chartCard: {
+    backgroundColor: '#15151C',
+    borderWidth: 1,
+    borderColor: '#2A2A35',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  backupRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  exportBtn: {
+    backgroundColor: '#B4FF39',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flex: 1,
+    alignItems: 'center',
+  },
+  exportBtnText: { color: '#0B0B0F', fontSize: 15, fontWeight: '700' },
+  importBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#2A2A35',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flex: 1,
+    alignItems: 'center',
+  },
+  importBtnText: { color: '#A1A1AA', fontSize: 15, fontWeight: '600' },
 });
