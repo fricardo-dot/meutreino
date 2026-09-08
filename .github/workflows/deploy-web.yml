@@ -55,6 +55,19 @@ jobs:
           BASE_URL: /meutreino
         run: npx --no-install expo export --platform web
 
+      # O GitHub Pages não tem fallback de SPA: abrir uma rota interna direto
+      # pela URL (link compartilhado, favorito, F5 numa aba que está em
+      # /exercicios) devolvia a página de erro do GitHub em vez do app.
+      #
+      # Servir uma cópia do index.html como 404.html resolve: o Pages entrega
+      # o app em qualquer caminho e o Expo Router assume dali. A resposta sai
+      # com status 404, o que é irrelevante aqui e é como todo SPA no Pages faz.
+      #
+      # A cópia é feita no build, e não versionada em public/, porque o
+      # index.html referencia o bundle com hash — que muda a cada build.
+      - name: Fallback de SPA (404.html = index.html)
+        run: cp dist/index.html dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 

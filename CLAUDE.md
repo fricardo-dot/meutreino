@@ -55,6 +55,9 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 - **`Alert.alert` não funciona em PWA no Safari iOS.** Use `<ConfirmDialog />`.
 - `public/` vai como está para `dist/`. Ao mudar asset cacheado, suba o
   `CACHE_VERSION` em `public/sw.js` — senão o usuário fica na versão velha.
+- Rota interna aberta direto pela URL só funciona porque o CI copia o
+  `index.html` para `dist/404.html` — o GitHub Pages não tem fallback de SPA.
+  Se o build sair do workflow atual, esse passo tem que ir junto.
 - Push na `main` publica sozinho (Actions → Pages). Não existe staging.
 
 ## Convenções
