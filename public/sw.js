@@ -143,7 +143,19 @@ async function staleWhileRevalidate(request) {
 
 async function networkFirstWithFallback(request) {
   try {
-    const response = await fetch(request);
+    // `cache: 'no-cache'` obriga o navegador a revalidar com o servidor antes
+    // de reaproveitar o HTML do cache HTTP.
+    //
+    // Sem isso, o `Cache-Control: max-age=600` que o GitHub Pages devolve para
+    // o HTML fazia este fetch ser servido pelo cache do navegador: por até 10
+    // minutos depois de um deploy o usuário continuava recebendo o index.html
+    // da versão anterior — que aponta para um bundle que o deploy novo já
+    // apagou, resultando em 404 e app quebrado até o cache expirar.
+    //
+    // Revalidar é barato: quando nada mudou, o servidor responde 304 e nada
+    // é baixado de novo. Passamos a URL (e não o Request) porque um Request
+    // com mode 'navigate' não pode ser reconstruído com outras opções.
+    const response = await fetch(request.url, { cache: 'no-cache' });
     if (response.ok) {
       const cache = await caches.open(CACHE_VERSION);
       cache.put(request, response.clone());
