@@ -1,0 +1,19 @@
+version: 2
+
+updates:
+  # As actions do deploy-web.yml são fixadas por SHA (ver comentário no topo
+  # daquele arquivo). Sem isso aqui, nada avisaria que saiu versão nova — o
+  # Dependabot abre PR atualizando o SHA e o comentário da tag juntos.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      # Um PR só com tudo que for patch/minor; major vem separado, porque é
+      # o caso que exige ler release notes antes de aceitar.
+      actions-non-major:
+        update-types:
+          - minor
+          - patch

@@ -1,5 +1,12 @@
 name: Deploy Web (PWA)
 
+# As actions são fixadas por SHA completo, com a tag no comentário ao lado.
+# Motivo: este workflow publica direto em produção com `pages: write` e
+# `id-token: write`, e uma tag como @v7 é móvel — se ela for movida ou
+# comprometida, o código novo entra no deploy sem revisão. O SHA é imutável.
+# O Dependabot (.github/dependabot.yml) abre PR quando há versão nova; ao
+# aceitar, atualize o SHA E o comentário da tag juntos.
+
 # Dispara em todo push na main e também manualmente.
 on:
   push:
@@ -20,13 +27,13 @@ concurrency:
 jobs:
   build:
     name: Build PWA
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # Node 20 saiu de suporte. O 24 é o mesmo runtime usado em dev.
           node-version: 24
@@ -49,21 +56,21 @@ jobs:
         run: npx --no-install expo export --platform web
 
       - name: Setup Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ./dist
 
   deploy:
     name: Deploy no GitHub Pages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
