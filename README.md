@@ -1,56 +1,107 @@
-# Welcome to your Expo app 👋
+# MeuTreino 🏋️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App de registro de treinos de musculação. Roda como PWA no navegador e, do
+mesmo código, como app nativo em Android e iOS.
 
-## Get started
+**No ar:** https://fricardo-dot.github.io/meutreino/
 
-1. Install dependencies
+Instale pelo próprio navegador ("Adicionar à tela de início") e ele funciona
+offline, inclusive para registrar treino sem sinal.
 
-   ```bash
-   npm install
-   ```
+## O que faz
 
-2. Start the app
+**Calendário** — a semana em uma tela, com o treino de cada dia e o que já foi
+feito. Programação semanal, troca de treino (que reprograma os dias seguintes)
+e marcação retroativa de dias passados.
 
-   ```bash
-   npx expo start
-   ```
+**Treino em andamento** — registro série a série com carga, repetições e RIR.
+Cada nova série já vem pré-preenchida com os valores da anterior, então na
+maioria das vezes é só confirmar. Cronômetro de descanso que continua correto
+mesmo se o celular bloquear ou o app for para segundo plano.
 
-In the output, you'll find options to open the app in a
+**Recordes** — detectados automaticamente ao salvar a série, em quatro
+categorias: maior carga, mais repetições, maior volume e 1RM estimado
+(fórmula de Epley). O histórico de recordes é preservado, não sobrescrito.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+**Exercícios e fichas** — catálogo próprio, com exercícios personalizados.
+Exercício removido é arquivado, nunca apagado, para não quebrar o histórico.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+**Perfil** — peso corporal com gráfico de evolução, estatísticas gerais
+(sessões, séries, volume, tempo) e volume por grupo muscular.
 
-## Get a fresh project
+**Relatório semanal** — exporta os treinos do período em Markdown, num formato
+pensado para colar num chat de IA e pedir análise da progressão.
 
-When you're ready, run:
+**Backup** — exporta e importa todos os dados num único arquivo JSON, para
+trocar de aparelho ou reinstalar sem perder histórico.
+
+## Onde ficam os dados
+
+Tudo no seu dispositivo, num banco SQLite. Não há servidor, conta ou login:
+nenhum dado sai do aparelho.
+
+- **Nativo:** arquivo SQLite no diretório do app (expo-sqlite).
+- **Web:** SQLite compilado para WebAssembly, persistido no IndexedDB do
+  navegador (sql.js).
+
+Como consequência, **não existe backup automático**. Limpar os dados do site
+apaga o histórico da versão web. Use a exportação JSON do Perfil de tempos em
+tempos — é o que permite restaurar.
+
+## Rodando localmente
+
+Desenvolvido no Node 24, que é a versão usada no CI. O projeto não declara
+`engines`, mas é essa a combinação testada.
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+```bash
+npm start
+```
 
-### Other setup steps
+O Expo abre com as opções de plataforma. Para ir direto a uma delas:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm run web
+```
 
-## Learn more
+`npm run android` e `npm run ios` também estão disponíveis. Para o app nativo
+sem build próprio, use o [Expo Go](https://expo.dev/go).
 
-To learn more about developing your project with Expo, look at the following resources:
+Não há testes nem lint configurados. A verificação antes de commitar é o
+typecheck:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx tsc --noEmit
+```
 
-## Join the community
+## Organização
 
-Join our community of developers creating universal apps.
+Roteamento por arquivos com [Expo Router](https://docs.expo.dev/router/introduction),
+em `src/app`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+src/
+  app/           telas e rotas
+  components/    componentes reutilizáveis
+  db/            client (nativo e web), schema e migrations
+  repositories/  acesso ao banco, uma por tabela
+  services/      regras de negócio (treino, recordes, calendário, backup)
+  hooks/         estado compartilhado (banco, sessão ativa, cronômetro)
+  theme/         cores, espaçamento, tipografia
+```
+
+O `CLAUDE.md` na raiz descreve os contratos que o código assume — imutabilidade
+das migrations, a fronteira UTC/local nas datas, o subpath do GitHub Pages.
+Vale a leitura antes de mexer em qualquer uma dessas áreas.
+
+## Publicação
+
+Todo push na `main` dispara o workflow `Deploy Web (PWA)`, que exporta a versão
+web e publica no GitHub Pages. Não há staging: o que entra na `main` vai ao ar.
+
+## Licença
+
+MIT — ver [LICENSE](LICENSE).
