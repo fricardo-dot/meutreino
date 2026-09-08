@@ -33,6 +33,11 @@ export const colors = {
     soft: 'rgba(180, 255, 57, 0.15)',
     /** Borda translúcida (~30% opacidade) */
     borderSoft: 'rgba(180, 255, 57, 0.30)',
+    /**
+     * Linha de referência desenhada sobre conteúdo (~40% opacidade).
+     * Ex.: a linha tracejada da meta no gráfico de peso.
+     */
+    line: 'rgba(180, 255, 57, 0.40)',
   },
 
   text: {
@@ -42,6 +47,15 @@ export const colors = {
     secondary: '#A1A1AA',
     /** Texto desabilitado/placeholder */
     muted: '#6B6B76',
+    /**
+     * Rótulo sobre um botão de fundo sólido (accent ou status).
+     *
+     * ATENÇÃO: branco só tem contraste aceitável sobre `status.danger`
+     * (3,76:1). Sobre `accent.base` o contraste é 1,21:1 — ilegível. Num
+     * botão lima o rótulo deve ser `background.base` (16,19:1), não este
+     * token.
+     */
+    onFilled: '#FFFFFF',
   },
 
   status: {

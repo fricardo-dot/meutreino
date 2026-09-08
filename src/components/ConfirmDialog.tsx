@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.danger,
   },
   confirmText: {
-    color: '#FFFFFF',
+    color: colors.text.onFilled,
     fontSize: 15,
     fontWeight: '700',
   },

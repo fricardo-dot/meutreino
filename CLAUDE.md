@@ -64,9 +64,8 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 
 - Import interno sempre por `@/`.
 - **Cor sempre vem de `@/theme`**, nunca literal hex ou `rgba()`. Cor nova
-  entra em `src/theme/colors.ts` primeiro e só então é usada. As telas de
-  `src/app` estão 100% migradas; sobram dois literais em `src/components`
-  (`ConfirmDialog`, `WeightChart`) que precisam de token novo.
+  entra em `src/theme/colors.ts` primeiro e só então é usada. Não há uma única
+  exceção hoje em `src/` — se aparecer um literal, é regressão.
 - **Espaçamento e raio usam `spacing`/`radius` quando existe token exato.**
   As escalas são deliberadamente curtas — `spacing` tem 4/8/12/16/20/24/32/
   40/48, `radius` tem 10/12/14/16/20 — e não devem crescer para acomodar

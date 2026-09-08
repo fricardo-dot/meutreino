@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     height: 0,
     // Tracejado via borda pontilhada (funciona em web e nativo).
     borderStyle: 'dashed',
-    borderColor: 'rgba(180, 255, 57, 0.4)',
+    borderColor: colors.accent.line,
     borderWidth: 0,
     borderBottomWidth: 1,
   },
