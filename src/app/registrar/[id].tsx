@@ -20,7 +20,7 @@ import { sessionsRepository } from '@/repositories/sessions.repository';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
 
 /**
@@ -158,7 +158,7 @@ export default function RegistrarSessaoScreen() {
             onSaved={() => void load()}
           />
         )}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
       />
 
       <View style={styles.footer}>
@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 52,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -431,8 +431,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.background.elevated,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomColor: colors.background.border,
     borderBottomWidth: 1,
   },
@@ -443,32 +443,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     marginBottom: 14,
   },
-  blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 12 },
-  blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: 4 },
+  blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
+  blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: spacing.xs },
   blockMeta: { color: colors.text.muted, fontSize: 12, marginTop: 2 },
-  allDoneText: { color: colors.status.success, fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 12 },
-  setsTable: { marginBottom: 12 },
+  allDoneText: { color: colors.status.success, fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: spacing.md },
+  setsTable: { marginBottom: spacing.md },
   setRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   setNumber: { color: colors.accent.base, fontWeight: '700', width: 36 },
   setDetail: { color: colors.text.secondary, fontSize: 14, flex: 1 },
-  inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  inputLabel: { color: colors.text.muted, fontSize: 12, marginBottom: 4, fontWeight: '500' },
+  inputRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.md },
+  inputLabel: { color: colors.text.muted, fontSize: 12, marginBottom: spacing.xs, fontWeight: '500' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background.base,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     paddingHorizontal: 10,
   },
   input: { color: colors.text.primary, fontSize: 18, fontWeight: '600', paddingVertical: 10, flex: 1 },
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   saveBtn: {
     flex: 1,
     backgroundColor: colors.accent.base,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -485,13 +485,13 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 12,
+    marginTop: spacing.md,
     alignItems: 'center',
   },
   resetBtn: {
     width: 50,
     height: 50,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
@@ -504,8 +504,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing['3xl'],
     backgroundColor: colors.background.base,
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
@@ -514,8 +514,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.accent.base,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   completeBtnDisabled: { opacity: 0.5 },
@@ -524,8 +524,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   backFooterBtnText: { color: colors.text.secondary, fontSize: 16, fontWeight: '600' },

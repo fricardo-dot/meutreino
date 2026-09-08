@@ -22,7 +22,7 @@ import { backupService } from '@/services/backup.service';
 import { calendarService } from '@/services/calendar.service';
 import { generateWeeklyReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
 
 /**
@@ -197,7 +197,7 @@ export default function PerfilScreen() {
   const imc = computeIMC(latestWeight?.weight_kg ?? null, profile?.height_cm ?? null);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ padding: 16, paddingTop: 48, paddingBottom: 48 }}>
+    <ScrollView style={styles.screen} contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing['5xl'], paddingBottom: spacing['5xl'] }}>
       {/* Cabeçalho */}
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
@@ -472,7 +472,7 @@ function ProfileEditModal({
           />
 
           <View style={styles.fieldRow}>
-            <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={{ flex: 1, marginRight: spacing.sm }}>
               <Text style={styles.fieldLabel}>Altura (cm)</Text>
               <TextInput
                 style={styles.fieldInput}
@@ -567,11 +567,11 @@ function formatPR(type: string, value: number): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
   iconBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
@@ -580,40 +580,40 @@ const styles = StyleSheet.create({
   },
   hello: { color: colors.text.secondary, fontSize: 14 },
   name: { color: colors.text.primary, fontSize: 26, fontWeight: '700' },
-  bioRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  bioRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   bioCard: {
     flex: 1,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     padding: 14,
   },
-  bioLabel: { color: colors.text.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 4 },
+  bioLabel: { color: colors.text.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: spacing.xs },
   bioValueRow: { flexDirection: 'row', alignItems: 'baseline' },
   bioValue: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
   bioSubtitle: { color: colors.text.muted, fontSize: 12 },
-  targetHint: { color: colors.accent.base, fontSize: 13, marginTop: 8, marginBottom: 16, fontWeight: '500' },
-  sectionTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 10 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  targetHint: { color: colors.accent.base, fontSize: 13, marginTop: spacing.sm, marginBottom: spacing.lg, fontWeight: '500' },
+  sectionTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: spacing['2xl'], marginBottom: 10 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   statCard: {
     width: '48%',
     flexGrow: 1,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
   },
   statValue: { color: colors.accent.base, fontSize: 22, fontWeight: '700' },
   statValueBig: { fontSize: 32 },
-  statLabel: { color: colors.text.secondary, fontSize: 13, marginTop: 4 },
+  statLabel: { color: colors.text.secondary, fontSize: 13, marginTop: spacing.xs },
   card: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
   },
   muscleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   muscleRowBorder: { borderTopColor: colors.background.border, borderTopWidth: 1 },
@@ -625,20 +625,20 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: colors.background.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    borderTopLeftRadius: radius.pill,
+    borderTopRightRadius: radius.pill,
+    padding: spacing.xl,
     paddingBottom: 36,
     borderWidth: 1,
     borderColor: colors.background.border,
   },
   modalTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700' },
-  modalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: 4, marginBottom: 16 },
+  modalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.xs, marginBottom: spacing.lg },
   modalInput: {
     backgroundColor: colors.background.base,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 14,
     color: colors.text.primary,
@@ -646,14 +646,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  fieldLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
+  fieldLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: 6 },
   fieldInput: {
     backgroundColor: colors.background.base,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     color: colors.text.primary,
     fontSize: 16,
   },
@@ -664,33 +664,33 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     alignSelf: 'center',
-    marginTop: 16,
+    marginTop: spacing.lg,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
   },
   resetBtnText: { color: colors.status.danger, fontSize: 13, fontWeight: '600' },
   modalSaveBtn: {
     backgroundColor: colors.accent.base,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   modalSaveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
   chartCard: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
     alignItems: 'center',
   },
-  backupRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  backupRow: { flexDirection: 'row', gap: 10, marginTop: spacing.sm },
   reportHint: { color: colors.text.muted, fontSize: 13, lineHeight: 18, marginBottom: 10 },
   exportBtn: {
     backgroundColor: colors.accent.base,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingVertical: 14,
     flex: 1,
     alignItems: 'center',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingVertical: 14,
     flex: 1,
     alignItems: 'center',

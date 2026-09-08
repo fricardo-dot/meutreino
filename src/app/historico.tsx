@@ -11,7 +11,7 @@ import {
 
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository, type SessionSummary } from '@/repositories/sessions.repository';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 /**
  * Histórico de sessões concluídas.
@@ -77,7 +77,7 @@ export default function HistoricoScreen() {
             </Text>
           </View>
         }
-        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['5xl'] }}
       />
     </View>
   );
@@ -107,19 +107,19 @@ function formatDuration(seconds: number | null): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
-  header: { paddingTop: 48, paddingHorizontal: 16, paddingBottom: 8 },
+  header: { paddingTop: spacing['5xl'], paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
-  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700', paddingHorizontal: 16, marginBottom: 8 },
+  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   card: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     marginBottom: 10,
   },
   cardTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 10 },
-  cardStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cardStats: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stat: {
     backgroundColor: colors.background.base,
     borderRadius: 8,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   statText: { color: colors.text.secondary, fontSize: 13 },
-  empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: 32 },
+  empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: spacing['3xl'] },
   emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
 });

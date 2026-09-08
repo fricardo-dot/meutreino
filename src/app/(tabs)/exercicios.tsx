@@ -15,7 +15,7 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import type { ExerciseRow, MuscleGroup } from '@/types/db';
 
 /**
@@ -101,7 +101,7 @@ export default function ExerciciosScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, alignItems: 'center' }}
         >
           {FILTERS.map((f) => {
             const active = filter === f.value;
@@ -139,7 +139,7 @@ export default function ExerciciosScreen() {
               </Text>
             </View>
           }
-          contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing['5xl'] }}
         />
       )}
 
@@ -224,7 +224,7 @@ function ExerciseCard({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: spacing.sm }}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
@@ -297,7 +297,7 @@ function CreateExerciseModal({
           </Pressable>
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
           <Text style={styles.fieldLabel}>Nome</Text>
           <TextInput
             style={styles.fieldInput}
@@ -314,7 +314,7 @@ function CreateExerciseModal({
               return (
                 <Pressable
                   key={g}
-                  style={[styles.filterChip, active && styles.filterChipActive, { marginHorizontal: 4 }]}
+                  style={[styles.filterChip, active && styles.filterChipActive, { marginHorizontal: spacing.xs }]}
                   onPress={() => setMuscleGroup(g)}
                 >
                   <Text style={[styles.filterText, active && styles.filterTextActive]}>
@@ -325,7 +325,7 @@ function CreateExerciseModal({
             })}
           </ScrollView>
 
-          <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Equipamento (opcional)</Text>
+          <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Equipamento (opcional)</Text>
           <TextInput
             style={styles.fieldInput}
             value={equipment}
@@ -357,9 +357,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingTop: spacing['5xl'],
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -367,31 +367,31 @@ const styles = StyleSheet.create({
   title: { color: colors.text.primary, fontSize: 28, fontWeight: '700' },
   newButton: {
     backgroundColor: colors.accent.base,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: radius.md,
   },
   newButtonText: { color: colors.background.base, fontSize: 14, fontWeight: '700' },
-  searchWrap: { paddingHorizontal: 16, marginBottom: 8 },
+  searchWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   searchInput: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     color: colors.text.primary,
     fontSize: 16,
   },
-  filtersWrap: { height: 48, justifyContent: 'center', marginBottom: 8 },
+  filtersWrap: { height: 48, justifyContent: 'center', marginBottom: spacing.sm },
   filterChip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    marginRight: 8,
+    marginRight: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -405,8 +405,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     marginBottom: 10,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -415,59 +415,59 @@ const styles = StyleSheet.create({
   customBadge: {
     backgroundColor: colors.accent.soft,
     borderRadius: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   customBadgeText: { color: colors.accent.base, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  deleteBtn: { paddingLeft: 12, paddingVertical: 4 },
+  deleteBtn: { paddingLeft: spacing.md, paddingVertical: spacing.xs },
   deleteIcon: { fontSize: 16 },
   details: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   detailLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', marginBottom: 2 },
   detailValue: { color: colors.text.secondary, fontSize: 14, lineHeight: 20 },
   noDetails: { color: colors.text.muted, fontSize: 13, fontStyle: 'italic' },
-  empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 },
+  empty: { alignItems: 'center', paddingTop: spacing['5xl'], paddingHorizontal: spacing['3xl'] },
   emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
   modalScreen: { flex: 1, backgroundColor: colors.background.base },
   modalHeader: {
     paddingTop: 56,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   modalTitle: { color: colors.text.primary, fontSize: 22, fontWeight: '700' },
   modalClose: { color: colors.text.secondary, fontSize: 20 },
-  fieldLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  fieldLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm },
   fieldInput: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     color: colors.text.primary,
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
-  errorText: { color: colors.status.danger, fontSize: 14, marginTop: 8 },
+  errorText: { color: colors.status.danger, fontSize: 14, marginTop: spacing.sm },
   modalFooter: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing['3xl'],
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   saveBtn: {
     backgroundColor: colors.accent.base,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.5 },

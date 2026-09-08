@@ -66,9 +66,15 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 - **Cor sempre vem de `@/theme`**, nunca literal hex ou `rgba()`. Cor nova
   entra em `src/theme/colors.ts` primeiro e só então é usada. As telas de
   `src/app` estão 100% migradas; sobram dois literais em `src/components`
-  (`ConfirmDialog`, `WeightChart`) que precisam de token novo. Os tokens de
-  `spacing`, `radius` e `typography` existem mas ainda não foram adotados —
-  ali ainda há número mágico.
+  (`ConfirmDialog`, `WeightChart`) que precisam de token novo.
+- **Espaçamento e raio usam `spacing`/`radius` quando existe token exato.**
+  As escalas são deliberadamente curtas — `spacing` tem 4/8/12/16/20/24/32/
+  40/48, `radius` tem 10/12/14/16/20 — e não devem crescer para acomodar
+  valor solto: a escala existe justamente para conter o drift. Onde a tela
+  precisa de um valor fora da escala (10, 14, 2, 6 e alguns one-offs), o
+  número fica literal mesmo, marcando a exceção. Nunca encaixe um valor no
+  token mais próximo "para padronizar" — isso muda o layout.
+- `typography` ainda não foi adotada; `fontSize` nas telas continua literal.
 - Contagem de tempo é baseada em **timestamp de término**, nunca em contador em
   memória — o app volta do background com o valor certo (`useRestTimer`).
 - Comentários em português, explicando o **porquê**.

@@ -16,7 +16,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutExercisesRepository, type WorkoutExerciseWithExercise } from '@/repositories/workout-exercises.repository';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import type { ExerciseRow, WorkoutRow } from '@/types/db';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 
@@ -191,7 +191,7 @@ export default function TreinoDetalheScreen() {
             <Text style={styles.addBtnText}>+ Adicionar exercício</Text>
           </Pressable>
         }
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
       />
 
       <View style={styles.footer}>
@@ -281,7 +281,7 @@ function ExercisePicker({
               </Text>
             </Pressable>
           )}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: spacing.lg }}
         />
       </View>
     </Modal>
@@ -291,9 +291,9 @@ function ExercisePicker({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
-  header: { paddingTop: 48, paddingHorizontal: 16, paddingBottom: 8 },
+  header: { paddingTop: spacing['5xl'], paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
-  titleWrap: { paddingHorizontal: 16, paddingBottom: 8 },
+  titleWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   titleInput: {
     color: colors.text.primary,
     fontSize: 24,
@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -314,18 +314,18 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '600' },
   cardMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
   cardPlan: { color: colors.accent.base, fontSize: 14, marginTop: 6, fontWeight: '500' },
-  removeBtn: { color: colors.status.danger, fontSize: 18, paddingLeft: 12 },
-  empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 },
+  removeBtn: { color: colors.status.danger, fontSize: 18, paddingLeft: spacing.md },
+  empty: { alignItems: 'center', paddingTop: spacing['5xl'], paddingHorizontal: spacing['3xl'] },
   emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
   addBtn: {
     borderWidth: 1,
     borderColor: colors.background.border,
     borderStyle: 'dashed',
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   addBtnText: { color: colors.accent.base, fontSize: 15, fontWeight: '600' },
   footer: {
@@ -333,16 +333,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing['3xl'],
     backgroundColor: colors.background.base,
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   startBtn: {
     backgroundColor: colors.accent.base,
-    borderRadius: 14,
-    paddingVertical: 16,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   startBtnDisabled: { opacity: 0.4 },
@@ -351,16 +351,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   cycleLabel: {
     color: colors.text.muted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   cycleValue: { color: colors.text.primary, fontSize: 14, lineHeight: 20 },
   cycleToggleBtn: {
@@ -370,15 +370,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent.base,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   cycleToggleText: { color: colors.accent.base, fontSize: 13, fontWeight: '600' },
   pickerScreen: { flex: 1, backgroundColor: colors.background.base },
   pickerHeader: {
     paddingTop: 56,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -386,14 +386,14 @@ const styles = StyleSheet.create({
   pickerTitle: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
   pickerClose: { color: colors.text.secondary, fontSize: 20 },
   searchInput: {
-    margin: 16,
-    marginTop: 8,
+    margin: spacing.lg,
+    marginTop: spacing.sm,
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     color: colors.text.primary,
     fontSize: 16,
   },
@@ -401,9 +401,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.surface,
     borderWidth: 1,
     borderColor: colors.background.border,
-    borderRadius: 12,
+    borderRadius: radius.md,
     padding: 14,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   pickerItemName: { color: colors.text.primary, fontSize: 16, fontWeight: '500' },
   pickerItemMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },

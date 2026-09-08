@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
-import { colors } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 /**
  * Tab bar profissional com ícones vetoriais (Ionicons).
@@ -36,7 +36,7 @@ export default function TabsLayout() {
           borderTopColor: colors.background.border,
           borderTopWidth: 1,
           height: 60,
-          paddingBottom: 4,
+          paddingBottom: spacing.xs,
         },
         tabBarActiveTintColor: colors.accent.base,
         tabBarInactiveTintColor: colors.text.muted,
@@ -45,7 +45,7 @@ export default function TabsLayout() {
           fontWeight: '600',
           marginTop: 2,
         },
-        tabBarIconStyle: { marginTop: 4 },
+        tabBarIconStyle: { marginTop: spacing.xs },
       }}
     >
       <Tabs.Screen
