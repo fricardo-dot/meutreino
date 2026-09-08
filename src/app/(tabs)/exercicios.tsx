@@ -15,6 +15,7 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
+import { colors } from '@/theme';
 import type { ExerciseRow, MuscleGroup } from '@/types/db';
 
 /**
@@ -92,7 +93,7 @@ export default function ExerciciosScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Buscar exercício..."
-          placeholderTextColor="#6B6B76"
+          placeholderTextColor={colors.text.muted}
         />
       </View>
 
@@ -121,7 +122,7 @@ export default function ExerciciosScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#B4FF39" size="large" />
+          <ActivityIndicator color={colors.accent.base} size="large" />
         </View>
       ) : (
         <FlatList
@@ -303,7 +304,7 @@ function CreateExerciseModal({
             value={name}
             onChangeText={setName}
             placeholder="Ex: Supino na máquina"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor={colors.text.muted}
           />
 
           <Text style={styles.fieldLabel}>Grupo muscular</Text>
@@ -330,7 +331,7 @@ function CreateExerciseModal({
             value={equipment}
             onChangeText={setEquipment}
             placeholder="Ex: halteres, barra, máquina"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor={colors.text.muted}
           />
 
           {error ? (
@@ -353,8 +354,8 @@ function CreateExerciseModal({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 48,
     paddingHorizontal: 16,
@@ -363,23 +364,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { color: '#F5F5F7', fontSize: 28, fontWeight: '700' },
+  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700' },
   newButton: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
   },
-  newButtonText: { color: '#0B0B0F', fontSize: 14, fontWeight: '700' },
+  newButtonText: { color: colors.background.base, fontSize: 14, fontWeight: '700' },
   searchWrap: { paddingHorizontal: 16, marginBottom: 8 },
   searchInput: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 16,
   },
   filtersWrap: { height: 48, justifyContent: 'center', marginBottom: 8 },
@@ -387,53 +388,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterChipActive: {
-    backgroundColor: '#B4FF39',
-    borderColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
+    borderColor: colors.accent.base,
   },
-  filterText: { color: '#A1A1AA', fontSize: 14, fontWeight: '500', lineHeight: 18, textAlign: 'center', includeFontPadding: false },
-  filterTextActive: { color: '#0B0B0F', fontWeight: '700' },
+  filterText: { color: colors.text.secondary, fontSize: 14, fontWeight: '500', lineHeight: 18, textAlign: 'center', includeFontPadding: false },
+  filterTextActive: { color: colors.background.base, fontWeight: '700' },
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
-  cardTitle: { color: '#F5F5F7', fontSize: 17, fontWeight: '600' },
-  cardMeta: { color: '#6B6B76', fontSize: 13, marginTop: 3 },
+  cardTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600' },
+  cardMeta: { color: colors.text.muted, fontSize: 13, marginTop: 3 },
   customBadge: {
-    backgroundColor: 'rgba(180, 255, 57, 0.15)',
+    backgroundColor: colors.accent.soft,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginLeft: 8,
   },
-  customBadgeText: { color: '#B4FF39', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  customBadgeText: { color: colors.accent.base, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   deleteBtn: { paddingLeft: 12, paddingVertical: 4 },
   deleteIcon: { fontSize: 16 },
   details: {
     marginTop: 12,
     paddingTop: 12,
-    borderTopColor: '#2A2A35',
+    borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
-  detailLabel: { color: '#6B6B76', fontSize: 12, fontWeight: '600', marginBottom: 2 },
-  detailValue: { color: '#A1A1AA', fontSize: 14, lineHeight: 20 },
-  noDetails: { color: '#6B6B76', fontSize: 13, fontStyle: 'italic' },
+  detailLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', marginBottom: 2 },
+  detailValue: { color: colors.text.secondary, fontSize: 14, lineHeight: 20 },
+  noDetails: { color: colors.text.muted, fontSize: 13, fontStyle: 'italic' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 },
-  emptyTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  emptyText: { color: '#A1A1AA', fontSize: 14, marginTop: 8, textAlign: 'center' },
-  modalScreen: { flex: 1, backgroundColor: '#0B0B0F' },
+  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
+  modalScreen: { flex: 1, backgroundColor: colors.background.base },
   modalHeader: {
     paddingTop: 56,
     paddingHorizontal: 16,
@@ -442,33 +443,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  modalTitle: { color: '#F5F5F7', fontSize: 22, fontWeight: '700' },
-  modalClose: { color: '#A1A1AA', fontSize: 20 },
-  fieldLabel: { color: '#6B6B76', fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  modalTitle: { color: colors.text.primary, fontSize: 22, fontWeight: '700' },
+  modalClose: { color: colors.text.secondary, fontSize: 20 },
+  fieldLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', marginBottom: 8 },
   fieldInput: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 16,
     marginBottom: 8,
   },
-  errorText: { color: '#EF4444', fontSize: 14, marginTop: 8 },
+  errorText: { color: colors.status.danger, fontSize: 14, marginTop: 8 },
   modalFooter: {
     padding: 16,
     paddingBottom: 32,
-    borderTopColor: '#2A2A35',
+    borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   saveBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
 });

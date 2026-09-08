@@ -24,6 +24,7 @@ import {
   type WeekStatus,
 } from '@/services/calendar.service';
 import { trainingCycleService } from '@/services/training-cycle.service';
+import { colors } from '@/theme';
 import type { WorkoutRow } from '@/types/db';
 
 /**
@@ -304,7 +305,7 @@ export default function CalendarioScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -545,7 +546,7 @@ function DayCard({
             onPress={() => onDeleteSession(day.sessionId!, day.date)}
             hitSlop={8}
           >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            <Ionicons name="trash-outline" size={18} color={colors.status.danger} />
           </Pressable>
         </View>
       ) : day.status === 'scheduled' ? (
@@ -628,7 +629,7 @@ function DayCard({
             style={styles.emptyBtn}
             onPress={() => onOpenSchedulePicker(day.date, day.dayOfWeek)}
           >
-            <Ionicons name="add-circle-outline" size={16} color="#B4FF39" />
+            <Ionicons name="add-circle-outline" size={16} color={colors.accent.base} />
             <Text style={styles.emptyBtnText}>Escolher treino</Text>
           </Pressable>
           <Pressable
@@ -764,7 +765,7 @@ function NewWeekModal({
                   : 'Sem treinos no ciclo'}
               </Text>
             </View>
-            <Ionicons name="play" size={20} color="#B4FF39" />
+            <Ionicons name="play" size={20} color={colors.accent.base} />
           </Pressable>
 
           <Pressable
@@ -780,7 +781,7 @@ function NewWeekModal({
                   : 'Sem treinos no ciclo'}
               </Text>
             </View>
-            <Ionicons name="refresh" size={20} color="#B4FF39" />
+            <Ionicons name="refresh" size={20} color={colors.accent.base} />
           </Pressable>
 
           <Text style={styles.newWeekFooterHint}>
@@ -862,8 +863,8 @@ function PastSessionPicker({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 52,
     paddingHorizontal: 16,
@@ -872,88 +873,88 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  monthLabel: { color: '#F5F5F7', fontSize: 20, fontWeight: '700' },
+  monthLabel: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  navArrow: { color: '#B4FF39', fontSize: 28, fontWeight: '300' },
+  navArrow: { color: colors.accent.base, fontSize: 28, fontWeight: '300' },
   todayBtn: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  todayBtnText: { color: '#B4FF39', fontSize: 13, fontWeight: '600' },
+  todayBtnText: { color: colors.accent.base, fontSize: 13, fontWeight: '600' },
   banner: {
-    backgroundColor: '#1E1E27',
+    backgroundColor: colors.background.elevated,
     borderWidth: 1,
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
   },
-  bannerTitle: { color: '#B4FF39', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  bannerName: { color: '#F5F5F7', fontSize: 20, fontWeight: '600', marginTop: 4 },
+  bannerTitle: { color: colors.accent.base, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  bannerName: { color: colors.text.primary, fontSize: 20, fontWeight: '600', marginTop: 4 },
   bannerActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   bannerContinue: {
     flex: 1,
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  bannerContinueText: { color: '#0B0B0F', fontWeight: '700', fontSize: 15 },
+  bannerContinueText: { color: colors.background.base, fontWeight: '700', fontSize: 15 },
   bannerDiscard: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
-  bannerDiscardText: { color: '#EF4444', fontWeight: '600', fontSize: 15 },
+  bannerDiscardText: { color: colors.status.danger, fontWeight: '600', fontSize: 15 },
 
   // ── Banner "Nova semana" ────────────────────────────────────────────────
   newWeekBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
   },
   newWeekEmoji: { fontSize: 24 },
-  newWeekTitle: { color: '#F5F5F7', fontSize: 15, fontWeight: '700' },
-  newWeekSubtitle: { color: '#A1A1AA', fontSize: 12, marginTop: 2 },
+  newWeekTitle: { color: colors.text.primary, fontSize: 15, fontWeight: '700' },
+  newWeekSubtitle: { color: colors.text.secondary, fontSize: 12, marginTop: 2 },
   autoFillBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  autoFillBtnText: { color: '#0B0B0F', fontWeight: '700', fontSize: 13 },
+  autoFillBtnText: { color: colors.background.base, fontWeight: '700', fontSize: 13 },
 
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
   },
   cardToday: {
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderWidth: 2,
-    backgroundColor: '#1E1E27',
+    backgroundColor: colors.background.elevated,
     // Compensa o borderWidth extra (2 vs 1) pra não reduzir o conteúdo.
     padding: 15,
   },
   cardCompleted: {
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
   },
   cardMuted: {
     opacity: 0.6,
@@ -964,29 +965,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  dayLabel: { color: '#A1A1AA', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  dayLabelToday: { color: '#B4FF39' },
-  todayBadge: { color: '#B4FF39', fontSize: 11, fontWeight: '700' },
+  dayLabel: { color: colors.text.secondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  dayLabelToday: { color: colors.accent.base },
+  todayBadge: { color: colors.accent.base, fontSize: 11, fontWeight: '700' },
   badgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  completedBadge: { color: '#22C55E', fontSize: 11, fontWeight: '600' },
+  completedBadge: { color: colors.status.success, fontSize: 11, fontWeight: '600' },
   completedBody: { marginTop: 4, flexDirection: 'row', alignItems: 'center' },
   deleteSessionBtn: {
     paddingLeft: 12,
     paddingVertical: 4,
   },
-  workoutName: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  workoutNameMuted: { color: '#6B6B76', fontSize: 18, fontWeight: '600', fontStyle: 'italic' },
-  tapHint: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
-  scheduledHint: { color: '#B4FF39', fontSize: 13, marginTop: 2, fontWeight: '500' },
-  notTrainedHint: { color: '#6B6B76', fontSize: 12, marginTop: 2, fontStyle: 'italic' },
+  workoutName: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  workoutNameMuted: { color: colors.text.muted, fontSize: 18, fontWeight: '600', fontStyle: 'italic' },
+  tapHint: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
+  scheduledHint: { color: colors.accent.base, fontSize: 13, marginTop: 2, fontWeight: '500' },
+  notTrainedHint: { color: colors.text.muted, fontSize: 12, marginTop: 2, fontStyle: 'italic' },
   markPastBtn: {
     marginTop: 8,
-    backgroundColor: 'rgba(180, 255, 57, 0.15)',
+    backgroundColor: colors.accent.soft,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  markPastBtnText: { color: '#B4FF39', fontSize: 13, fontWeight: '600' },
+  markPastBtnText: { color: colors.accent.base, fontSize: 13, fontWeight: '600' },
   scheduledFutureBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   // ── Botão "Trocar" (texto, nos dias programados) ────────────────────────
@@ -994,11 +995,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  swapBtnText: { color: '#A1A1AA', fontSize: 13, fontWeight: '500' },
+  swapBtnText: { color: colors.text.secondary, fontSize: 13, fontWeight: '500' },
 
   // ── Dia de descanso ─────────────────────────────────────────────────────
   restBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  restText: { color: '#6B6B76', fontSize: 16, fontWeight: '500' },
+  restText: { color: colors.text.muted, fontSize: 16, fontWeight: '500' },
 
   // ── Dia vazio (escolher treino / descanso) ──────────────────────────────
   emptyBody: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 },
@@ -1010,70 +1011,70 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 12,
     paddingVertical: 12,
   },
-  emptyBtnText: { color: '#B4FF39', fontSize: 14, fontWeight: '600' },
+  emptyBtnText: { color: colors.accent.base, fontSize: 14, fontWeight: '600' },
   restChoiceBtn: {
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  restChoiceText: { color: '#6B6B76', fontSize: 14 },
+  restChoiceText: { color: colors.text.muted, fontSize: 14 },
 
   startBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 12,
   },
   startBtnDisabled: { opacity: 0.5 },
-  startBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  startBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
   chooseBtn: {
     alignSelf: 'center',
     marginTop: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  chooseBtnText: { color: '#A1A1AA', fontSize: 13, fontWeight: '500' },
-  mutedText: { color: '#A1A1AA', fontSize: 14 },
-  noSessionText: { color: '#6B6B76', fontSize: 14, fontStyle: 'italic' },
-  tapPastHint: { color: '#B4FF39', fontSize: 13, marginTop: 6, fontWeight: '500' },
-  upcomingText: { color: '#6B6B76', fontSize: 18 },
+  chooseBtnText: { color: colors.text.secondary, fontSize: 13, fontWeight: '500' },
+  mutedText: { color: colors.text.secondary, fontSize: 14 },
+  noSessionText: { color: colors.text.muted, fontSize: 14, fontStyle: 'italic' },
+  tapPastHint: { color: colors.accent.base, fontSize: 13, marginTop: 6, fontWeight: '500' },
+  upcomingText: { color: colors.text.muted, fontSize: 18 },
 
   // ── Picker (bottom sheet) ───────────────────────────────────────────────
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     paddingBottom: 36,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
   },
-  pickerTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '700' },
-  pickerSubtitle: { color: '#A1A1AA', fontSize: 14, marginTop: 4, marginBottom: 16 },
-  pickerEmpty: { color: '#6B6B76', fontSize: 14, marginBottom: 12 },
+  pickerTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700' },
+  pickerSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: 4, marginBottom: 16 },
+  pickerEmpty: { color: colors.text.muted, fontSize: 14, marginBottom: 12 },
   pickerItem: {
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
   },
-  pickerItemName: { color: '#F5F5F7', fontSize: 16, fontWeight: '600' },
-  pickerItemMeta: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
+  pickerItemName: { color: colors.text.primary, fontSize: 16, fontWeight: '600' },
+  pickerItemMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
   pickerRestItem: {
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
@@ -1082,48 +1083,48 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
-  pickerClearText: { color: '#EF4444', fontSize: 15, fontWeight: '500' },
+  pickerClearText: { color: colors.status.danger, fontSize: 15, fontWeight: '500' },
   pickerManualBtn: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  pickerManualText: { color: '#B4FF39', fontSize: 15, fontWeight: '700' },
+  pickerManualText: { color: colors.accent.base, fontSize: 15, fontWeight: '700' },
   pickerCancel: {
     marginTop: 8,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  pickerCancelText: { color: '#A1A1AA', fontSize: 16 },
+  pickerCancelText: { color: colors.text.secondary, fontSize: 16 },
 
   // ── Modal "Nova semana" ─────────────────────────────────────────────────
   newWeekSheet: {
     paddingBottom: 28,
   },
-  newWeekModalTitle: { color: '#F5F5F7', fontSize: 22, fontWeight: '700' },
-  newWeekModalSubtitle: { color: '#A1A1AA', fontSize: 14, marginTop: 4, marginBottom: 16 },
+  newWeekModalTitle: { color: colors.text.primary, fontSize: 22, fontWeight: '700' },
+  newWeekModalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: 4, marginBottom: 16 },
   newWeekOption: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
   },
   newWeekOptionPrimary: {
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
   },
-  newWeekOptionTitle: { color: '#F5F5F7', fontSize: 16, fontWeight: '700' },
-  newWeekOptionSub: { color: '#A1A1AA', fontSize: 13, marginTop: 2 },
+  newWeekOptionTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '700' },
+  newWeekOptionSub: { color: colors.text.secondary, fontSize: 13, marginTop: 2 },
   newWeekFooterHint: {
-    color: '#6B6B76',
+    color: colors.text.muted,
     fontSize: 12,
     marginTop: 4,
     marginBottom: 12,

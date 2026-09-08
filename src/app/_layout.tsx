@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 
 import { DatabaseProvider } from '@/hooks/useDatabase';
+import { colors } from '@/theme';
 
 /**
  * Layout raiz.
@@ -17,7 +18,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#0B0B0F' },
+          contentStyle: { backgroundColor: colors.background.base },
         }}
       >
         <Stack.Screen name="(tabs)" />

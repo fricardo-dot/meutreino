@@ -16,6 +16,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutExercisesRepository, type WorkoutExerciseWithExercise } from '@/repositories/workout-exercises.repository';
+import { colors } from '@/theme';
 import type { ExerciseRow, WorkoutRow } from '@/types/db';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 
@@ -98,7 +99,7 @@ export default function TreinoDetalheScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -118,7 +119,7 @@ export default function TreinoDetalheScreen() {
           onChangeText={setNameDraft}
           onBlur={saveName}
           placeholder="Nome do treino"
-          placeholderTextColor="#6B6B76"
+          placeholderTextColor={colors.text.muted}
         />
         {workout?.division ? (
           <Text style={styles.division}>{workout.division}</Text>
@@ -264,7 +265,7 @@ function ExercisePicker({
           value={filter}
           onChangeText={setFilter}
           placeholder="Buscar exercício..."
-          placeholderTextColor="#6B6B76"
+          placeholderTextColor={colors.text.muted}
         />
         <FlatList
           data={exercises}
@@ -288,45 +289,45 @@ function ExercisePicker({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: { paddingTop: 48, paddingHorizontal: 16, paddingBottom: 8 },
-  back: { color: '#B4FF39', fontSize: 16, fontWeight: '600' },
+  back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
   titleWrap: { paddingHorizontal: 16, paddingBottom: 8 },
   titleInput: {
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 24,
     fontWeight: '700',
     padding: 0,
   },
-  division: { color: '#A1A1AA', fontSize: 14, marginTop: 2 },
+  division: { color: colors.text.secondary, fontSize: 14, marginTop: 2 },
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cardTitle: { color: '#F5F5F7', fontSize: 16, fontWeight: '600' },
-  cardMeta: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
-  cardPlan: { color: '#B4FF39', fontSize: 14, marginTop: 6, fontWeight: '500' },
-  removeBtn: { color: '#EF4444', fontSize: 18, paddingLeft: 12 },
+  cardTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '600' },
+  cardMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
+  cardPlan: { color: colors.accent.base, fontSize: 14, marginTop: 6, fontWeight: '500' },
+  removeBtn: { color: colors.status.danger, fontSize: 18, paddingLeft: 12 },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32 },
-  emptyTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  emptyText: { color: '#A1A1AA', fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
   addBtn: {
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderStyle: 'dashed',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  addBtnText: { color: '#B4FF39', fontSize: 15, fontWeight: '600' },
+  addBtnText: { color: colors.accent.base, fontSize: 15, fontWeight: '600' },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -334,46 +335,46 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     paddingBottom: 32,
-    backgroundColor: '#0B0B0F',
-    borderTopColor: '#2A2A35',
+    backgroundColor: colors.background.base,
+    borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   startBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   startBtnDisabled: { opacity: 0.4 },
-  startBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  startBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
   cycleWrap: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
   },
   cycleLabel: {
-    color: '#6B6B76',
+    color: colors.text.muted,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  cycleValue: { color: '#F5F5F7', fontSize: 14, lineHeight: 20 },
+  cycleValue: { color: colors.text.primary, fontSize: 14, lineHeight: 20 },
   cycleToggleBtn: {
     marginTop: 10,
     alignSelf: 'flex-start',
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  cycleToggleText: { color: '#B4FF39', fontSize: 13, fontWeight: '600' },
-  pickerScreen: { flex: 1, backgroundColor: '#0B0B0F' },
+  cycleToggleText: { color: colors.accent.base, fontSize: 13, fontWeight: '600' },
+  pickerScreen: { flex: 1, backgroundColor: colors.background.base },
   pickerHeader: {
     paddingTop: 56,
     paddingHorizontal: 16,
@@ -382,30 +383,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pickerTitle: { color: '#F5F5F7', fontSize: 20, fontWeight: '700' },
-  pickerClose: { color: '#A1A1AA', fontSize: 20 },
+  pickerTitle: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
+  pickerClose: { color: colors.text.secondary, fontSize: 20 },
   searchInput: {
     margin: 16,
     marginTop: 8,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 16,
   },
   pickerItem: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
   },
-  pickerItemName: { color: '#F5F5F7', fontSize: 16, fontWeight: '500' },
-  pickerItemMeta: { color: '#6B6B76', fontSize: 13, marginTop: 2 },
+  pickerItemName: { color: colors.text.primary, fontSize: 16, fontWeight: '500' },
+  pickerItemMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
 });
 
 /** 1 → "1º", 2 → "2º", 3 → "3º"... */

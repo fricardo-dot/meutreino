@@ -60,6 +60,12 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 ## Convenções
 
 - Import interno sempre por `@/`.
+- **Cor sempre vem de `@/theme`**, nunca literal hex ou `rgba()`. Cor nova
+  entra em `src/theme/colors.ts` primeiro e só então é usada. As telas de
+  `src/app` estão 100% migradas; sobram dois literais em `src/components`
+  (`ConfirmDialog`, `WeightChart`) que precisam de token novo. Os tokens de
+  `spacing`, `radius` e `typography` existem mas ainda não foram adotados —
+  ali ainda há número mágico.
 - Contagem de tempo é baseada em **timestamp de término**, nunca em contador em
   memória — o app volta do background com o valor certo (`useRestTimer`).
 - Comentários em português, explicando o **porquê**.

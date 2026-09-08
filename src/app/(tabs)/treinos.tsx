@@ -12,6 +12,7 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { workoutsRepository } from '@/repositories/workouts.repository';
+import { colors } from '@/theme';
 import type { WorkoutRow } from '@/types/db';
 
 /**
@@ -87,7 +88,7 @@ export default function TreinosScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -180,8 +181,8 @@ export default function TreinosScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingHorizontal: 16,
     paddingTop: 48,
@@ -190,22 +191,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { color: '#F5F5F7', fontSize: 28, fontWeight: '700' },
+  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700' },
   newButton: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
   },
-  newButtonText: { color: '#0B0B0F', fontSize: 14, fontWeight: '700' },
+  newButtonText: { color: colors.background.base, fontSize: 14, fontWeight: '700' },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
@@ -219,28 +220,28 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(180, 255, 57, 0.15)',
+    backgroundColor: colors.accent.soft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
-  cycleBadgeText: { color: '#B4FF39', fontSize: 14, fontWeight: '700' },
+  cycleBadgeText: { color: colors.accent.base, fontSize: 14, fontWeight: '700' },
   moveBtns: { flexDirection: 'row', gap: 4 },
   moveBtn: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moveBtnDisabled: { opacity: 0.3 },
-  moveIcon: { color: '#B4FF39', fontSize: 16, fontWeight: '700' },
-  cardTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  cardSub: { color: '#A1A1AA', fontSize: 14, marginTop: 4 },
+  moveIcon: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
+  cardTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  cardSub: { color: colors.text.secondary, fontSize: 14, marginTop: 4 },
   empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: 32 },
-  emptyTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  emptyText: { color: '#A1A1AA', fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
 });

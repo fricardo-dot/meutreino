@@ -11,6 +11,7 @@ import {
 
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository, type SessionSummary } from '@/repositories/sessions.repository';
+import { colors } from '@/theme';
 
 /**
  * Histórico de sessões concluídas.
@@ -39,7 +40,7 @@ export default function HistoricoScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -104,29 +105,29 @@ function formatDuration(seconds: number | null): string {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: { paddingTop: 48, paddingHorizontal: 16, paddingBottom: 8 },
-  back: { color: '#B4FF39', fontSize: 16, fontWeight: '600' },
-  title: { color: '#F5F5F7', fontSize: 28, fontWeight: '700', paddingHorizontal: 16, marginBottom: 8 },
+  back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
+  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700', paddingHorizontal: 16, marginBottom: 8 },
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
   },
-  cardTitle: { color: '#F5F5F7', fontSize: 17, fontWeight: '600', marginBottom: 10 },
+  cardTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 10 },
   cardStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stat: {
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  statText: { color: '#A1A1AA', fontSize: 13 },
+  statText: { color: colors.text.secondary, fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: 32 },
-  emptyTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '600' },
-  emptyText: { color: '#A1A1AA', fontSize: 14, marginTop: 8, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: 8, textAlign: 'center' },
 });

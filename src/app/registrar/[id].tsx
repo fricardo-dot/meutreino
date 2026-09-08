@@ -20,6 +20,7 @@ import { sessionsRepository } from '@/repositories/sessions.repository';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
+import { colors } from '@/theme';
 import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
 
 /**
@@ -111,7 +112,7 @@ export default function RegistrarSessaoScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -119,7 +120,7 @@ export default function RegistrarSessaoScreen() {
   if (!session) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: '#A1A1AA' }}>Sessão não encontrada.</Text>
+        <Text style={{ color: colors.text.secondary }}>Sessão não encontrada.</Text>
       </View>
     );
   }
@@ -374,7 +375,7 @@ function ExerciseBlock({
               disabled={saving}
               hitSlop={8}
             >
-              <Ionicons name="refresh" size={22} color="#A1A1AA" />
+              <Ionicons name="refresh" size={22} color={colors.text.secondary} />
             </Pressable>
             <Pressable
               style={[styles.saveBtn, saving && styles.actionBtnDisabled]}
@@ -411,8 +412,8 @@ function ExerciseBlock({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 52,
     paddingHorizontal: 16,
@@ -421,66 +422,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  back: { color: '#B4FF39', fontSize: 28, fontWeight: '300' },
+  back: { color: colors.accent.base, fontSize: 28, fontWeight: '300' },
   titleWrap: { flex: 1, alignItems: 'center' },
-  sessionName: { color: '#F5F5F7', fontSize: 18, fontWeight: '600', textAlign: 'center' },
-  sessionStatus: { color: '#6B6B76', fontSize: 12, marginTop: 2, fontWeight: '500' },
+  sessionName: { color: colors.text.primary, fontSize: 18, fontWeight: '600', textAlign: 'center' },
+  sessionStatus: { color: colors.text.muted, fontSize: 12, marginTop: 2, fontWeight: '500' },
   restBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E1E27',
+    backgroundColor: colors.background.elevated,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomColor: '#2A2A35',
+    borderBottomColor: colors.background.border,
     borderBottomWidth: 1,
   },
-  restLabel: { color: '#6B6B76', fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  restTime: { color: '#B4FF39', fontSize: 22, fontWeight: '700' },
-  restSkip: { color: '#A1A1AA', fontSize: 14, fontWeight: '500' },
+  restLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  restTime: { color: colors.accent.base, fontSize: 22, fontWeight: '700' },
+  restSkip: { color: colors.text.secondary, fontSize: 14, fontWeight: '500' },
   block: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 14,
   },
-  blockTitle: { color: '#F5F5F7', fontSize: 17, fontWeight: '600', marginBottom: 12 },
-  blockPlan: { color: '#B4FF39', fontSize: 13, fontWeight: '500', marginTop: 4 },
-  blockMeta: { color: '#6B6B76', fontSize: 12, marginTop: 2 },
-  allDoneText: { color: '#22C55E', fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 12 },
+  blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: 12 },
+  blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: 4 },
+  blockMeta: { color: colors.text.muted, fontSize: 12, marginTop: 2 },
+  allDoneText: { color: colors.status.success, fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: 12 },
   setsTable: { marginBottom: 12 },
   setRow: {
     flexDirection: 'row',
     paddingVertical: 8,
-    borderTopColor: '#2A2A35',
+    borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
-  setNumber: { color: '#B4FF39', fontWeight: '700', width: 36 },
-  setDetail: { color: '#A1A1AA', fontSize: 14, flex: 1 },
+  setNumber: { color: colors.accent.base, fontWeight: '700', width: 36 },
+  setDetail: { color: colors.text.secondary, fontSize: 14, flex: 1 },
   inputRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  inputLabel: { color: '#6B6B76', fontSize: 12, marginBottom: 4, fontWeight: '500' },
+  inputLabel: { color: colors.text.muted, fontSize: 12, marginBottom: 4, fontWeight: '500' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 10,
     paddingHorizontal: 10,
   },
-  input: { color: '#F5F5F7', fontSize: 18, fontWeight: '600', paddingVertical: 10, flex: 1 },
-  inputSuffix: { color: '#6B6B76', fontSize: 12 },
+  input: { color: colors.text.primary, fontSize: 18, fontWeight: '600', paddingVertical: 10, flex: 1 },
+  inputSuffix: { color: colors.text.muted, fontSize: 12 },
   saveBtn: {
     flex: 1,
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   actionBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -491,13 +492,13 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 12,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  savedFeedback: { color: '#22C55E', fontSize: 13, marginTop: 10, textAlign: 'center', fontWeight: '500' },
+  savedFeedback: { color: colors.status.success, fontSize: 13, marginTop: 10, textAlign: 'center', fontWeight: '500' },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -505,27 +506,27 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     paddingBottom: 32,
-    backgroundColor: '#0B0B0F',
-    borderTopColor: '#2A2A35',
+    backgroundColor: colors.background.base,
+    borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
   completeBtn: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   completeBtnDisabled: { opacity: 0.5 },
-  completeBtnText: { color: '#B4FF39', fontSize: 16, fontWeight: '700' },
+  completeBtnText: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
   backFooterBtn: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  backFooterBtnText: { color: '#A1A1AA', fontSize: 16, fontWeight: '600' },
+  backFooterBtnText: { color: colors.text.secondary, fontSize: 16, fontWeight: '600' },
 });

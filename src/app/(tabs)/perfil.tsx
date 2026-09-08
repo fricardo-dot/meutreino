@@ -22,6 +22,7 @@ import { backupService } from '@/services/backup.service';
 import { calendarService } from '@/services/calendar.service';
 import { generateWeeklyReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
+import { colors } from '@/theme';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
 
 /**
@@ -188,7 +189,7 @@ export default function PerfilScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#B4FF39" size="large" />
+        <ActivityIndicator color={colors.accent.base} size="large" />
       </View>
     );
   }
@@ -204,7 +205,7 @@ export default function PerfilScreen() {
           <Text style={styles.name}>{profile?.name || 'Atleta'}</Text>
         </View>
         <Pressable style={styles.iconBtn} onPress={() => setEditingProfile(true)}>
-          <Ionicons name="settings-outline" size={22} color="#A1A1AA" />
+          <Ionicons name="settings-outline" size={22} color={colors.text.secondary} />
         </Pressable>
       </View>
 
@@ -467,7 +468,7 @@ function ProfileEditModal({
             value={name}
             onChangeText={setName}
             placeholder="Seu nome"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor={colors.text.muted}
           />
 
           <View style={styles.fieldRow}>
@@ -479,7 +480,7 @@ function ProfileEditModal({
                 onChangeText={setHeight}
                 keyboardType="decimal-pad"
                 placeholder="178"
-                placeholderTextColor="#6B6B76"
+                placeholderTextColor={colors.text.muted}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -490,7 +491,7 @@ function ProfileEditModal({
                 onChangeText={setTarget}
                 keyboardType="decimal-pad"
                 placeholder="80"
-                placeholderTextColor="#6B6B76"
+                placeholderTextColor={colors.text.muted}
               />
             </View>
           </View>
@@ -502,7 +503,7 @@ function ProfileEditModal({
             onChangeText={setTodayWeight}
             keyboardType="decimal-pad"
             placeholder="Ex: 78.5"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor={colors.text.muted}
           />
 
           <Pressable style={styles.modalSaveBtn} onPress={handleSave}>
@@ -564,101 +565,101 @@ function formatPR(type: string, value: number): string {
 // ── Estilos ────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0B0B0F' },
-  center: { flex: 1, backgroundColor: '#0B0B0F', alignItems: 'center', justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background.base },
+  center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hello: { color: '#A1A1AA', fontSize: 14 },
-  name: { color: '#F5F5F7', fontSize: 26, fontWeight: '700' },
+  hello: { color: colors.text.secondary, fontSize: 14 },
+  name: { color: colors.text.primary, fontSize: 26, fontWeight: '700' },
   bioRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   bioCard: {
     flex: 1,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 14,
   },
-  bioLabel: { color: '#6B6B76', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 4 },
+  bioLabel: { color: colors.text.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 4 },
   bioValueRow: { flexDirection: 'row', alignItems: 'baseline' },
-  bioValue: { color: '#F5F5F7', fontSize: 20, fontWeight: '700' },
-  bioSubtitle: { color: '#6B6B76', fontSize: 12 },
-  targetHint: { color: '#B4FF39', fontSize: 13, marginTop: 8, marginBottom: 16, fontWeight: '500' },
-  sectionTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 10 },
+  bioValue: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
+  bioSubtitle: { color: colors.text.muted, fontSize: 12 },
+  targetHint: { color: colors.accent.base, fontSize: 13, marginTop: 8, marginBottom: 16, fontWeight: '500' },
+  sectionTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 10 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statCard: {
     width: '48%',
     flexGrow: 1,
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
   },
-  statValue: { color: '#B4FF39', fontSize: 22, fontWeight: '700' },
+  statValue: { color: colors.accent.base, fontSize: 22, fontWeight: '700' },
   statValueBig: { fontSize: 32 },
-  statLabel: { color: '#A1A1AA', fontSize: 13, marginTop: 4 },
+  statLabel: { color: colors.text.secondary, fontSize: 13, marginTop: 4 },
   card: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
   },
   muscleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  muscleRowBorder: { borderTopColor: '#2A2A35', borderTopWidth: 1 },
-  muscleName: { color: '#F5F5F7', fontSize: 15, fontWeight: '600' },
-  muscleStats: { color: '#A1A1AA', fontSize: 13 },
-  prExercise: { color: '#F5F5F7', fontSize: 14, fontWeight: '600' },
-  prType: { color: '#6B6B76', fontSize: 12, marginTop: 2 },
-  prValue: { color: '#B4FF39', fontSize: 16, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  muscleRowBorder: { borderTopColor: colors.background.border, borderTopWidth: 1 },
+  muscleName: { color: colors.text.primary, fontSize: 15, fontWeight: '600' },
+  muscleStats: { color: colors.text.secondary, fontSize: 13 },
+  prExercise: { color: colors.text.primary, fontSize: 14, fontWeight: '600' },
+  prType: { color: colors.text.muted, fontSize: 12, marginTop: 2 },
+  prValue: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalSheet: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     paddingBottom: 36,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
   },
-  modalTitle: { color: '#F5F5F7', fontSize: 18, fontWeight: '700' },
-  modalSubtitle: { color: '#A1A1AA', fontSize: 14, marginTop: 4, marginBottom: 16 },
+  modalTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700' },
+  modalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: 4, marginBottom: 16 },
   modalInput: {
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
   },
-  fieldLabel: { color: '#6B6B76', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
+  fieldLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginTop: 12, marginBottom: 6 },
   fieldInput: {
-    backgroundColor: '#0B0B0F',
+    backgroundColor: colors.background.base,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#F5F5F7',
+    color: colors.text.primary,
     fontSize: 16,
   },
   fieldRow: { flexDirection: 'row', alignItems: 'flex-end' },
   weightInputHighlight: {
-    borderColor: '#B4FF39',
+    borderColor: colors.accent.base,
     borderWidth: 2,
   },
   resetBtn: {
@@ -667,42 +668,42 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
-  resetBtnText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
+  resetBtnText: { color: colors.status.danger, fontSize: 13, fontWeight: '600' },
   modalSaveBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 12,
   },
-  modalSaveBtnText: { color: '#0B0B0F', fontSize: 16, fontWeight: '700' },
+  modalSaveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
   chartCard: {
-    backgroundColor: '#15151C',
+    backgroundColor: colors.background.surface,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
     alignItems: 'center',
   },
   backupRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  reportHint: { color: '#6B6B76', fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  reportHint: { color: colors.text.muted, fontSize: 13, lineHeight: 18, marginBottom: 10 },
   exportBtn: {
-    backgroundColor: '#B4FF39',
+    backgroundColor: colors.accent.base,
     borderRadius: 12,
     paddingVertical: 14,
     flex: 1,
     alignItems: 'center',
   },
-  exportBtnText: { color: '#0B0B0F', fontSize: 15, fontWeight: '700' },
+  exportBtnText: { color: colors.background.base, fontSize: 15, fontWeight: '700' },
   importBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: colors.background.border,
     borderRadius: 12,
     paddingVertical: 14,
     flex: 1,
     alignItems: 'center',
   },
-  importBtnText: { color: '#A1A1AA', fontSize: 15, fontWeight: '600' },
+  importBtnText: { color: colors.text.secondary, fontSize: 15, fontWeight: '600' },
 });
