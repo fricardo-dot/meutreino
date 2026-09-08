@@ -20,7 +20,7 @@ import { sessionsRepository } from '@/repositories/sessions.repository';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
 
 /**
@@ -422,10 +422,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  back: { color: colors.accent.base, fontSize: 28, fontWeight: '300' },
+  back: { color: colors.accent.base, fontSize: typography.size['2xl'], fontWeight: '300' },
   titleWrap: { flex: 1, alignItems: 'center' },
-  sessionName: { color: colors.text.primary, fontSize: 18, fontWeight: '600', textAlign: 'center' },
-  sessionStatus: { color: colors.text.muted, fontSize: 12, marginTop: 2, fontWeight: '500' },
+  sessionName: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600', textAlign: 'center' },
+  sessionStatus: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2, fontWeight: '500' },
   restBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,8 +437,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   restLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  restTime: { color: colors.accent.base, fontSize: 22, fontWeight: '700' },
-  restSkip: { color: colors.text.secondary, fontSize: 14, fontWeight: '500' },
+  restTime: { color: colors.accent.base, fontSize: typography.size.xl, fontWeight: '700' },
+  restSkip: { color: colors.text.secondary, fontSize: typography.size.sm, fontWeight: '500' },
   block: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -449,8 +449,8 @@ const styles = StyleSheet.create({
   },
   blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
   blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: spacing.xs },
-  blockMeta: { color: colors.text.muted, fontSize: 12, marginTop: 2 },
-  allDoneText: { color: colors.status.success, fontSize: 14, fontWeight: '600', textAlign: 'center', paddingVertical: spacing.md },
+  blockMeta: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2 },
+  allDoneText: { color: colors.status.success, fontSize: typography.size.sm, fontWeight: '600', textAlign: 'center', paddingVertical: spacing.md },
   setsTable: { marginBottom: spacing.md },
   setRow: {
     flexDirection: 'row',
@@ -459,9 +459,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   setNumber: { color: colors.accent.base, fontWeight: '700', width: 36 },
-  setDetail: { color: colors.text.secondary, fontSize: 14, flex: 1 },
+  setDetail: { color: colors.text.secondary, fontSize: typography.size.sm, flex: 1 },
   inputRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.md },
-  inputLabel: { color: colors.text.muted, fontSize: 12, marginBottom: spacing.xs, fontWeight: '500' },
+  inputLabel: { color: colors.text.muted, fontSize: typography.size.xs, marginBottom: spacing.xs, fontWeight: '500' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -471,8 +471,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: 10,
   },
-  input: { color: colors.text.primary, fontSize: 18, fontWeight: '600', paddingVertical: 10, flex: 1 },
-  inputSuffix: { color: colors.text.muted, fontSize: 12 },
+  input: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600', paddingVertical: 10, flex: 1 },
+  inputSuffix: { color: colors.text.muted, fontSize: typography.size.xs },
   saveBtn: {
     flex: 1,
     backgroundColor: colors.accent.base,
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: colors.background.base, fontSize: typography.size.md, fontWeight: '700' },
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   completeBtnDisabled: { opacity: 0.5 },
-  completeBtnText: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
+  completeBtnText: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '700' },
   backFooterBtn: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -528,5 +528,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     alignItems: 'center',
   },
-  backFooterBtnText: { color: colors.text.secondary, fontSize: 16, fontWeight: '600' },
+  backFooterBtnText: { color: colors.text.secondary, fontSize: typography.size.md, fontWeight: '600' },
 });

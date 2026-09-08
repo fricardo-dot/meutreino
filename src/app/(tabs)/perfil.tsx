@@ -22,7 +22,7 @@ import { backupService } from '@/services/backup.service';
 import { calendarService } from '@/services/calendar.service';
 import { generateWeeklyReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
 
 /**
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hello: { color: colors.text.secondary, fontSize: 14 },
+  hello: { color: colors.text.secondary, fontSize: typography.size.sm },
   name: { color: colors.text.primary, fontSize: 26, fontWeight: '700' },
   bioRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   bioCard: {
@@ -592,9 +592,9 @@ const styles = StyleSheet.create({
   bioLabel: { color: colors.text.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: spacing.xs },
   bioValueRow: { flexDirection: 'row', alignItems: 'baseline' },
   bioValue: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
-  bioSubtitle: { color: colors.text.muted, fontSize: 12 },
+  bioSubtitle: { color: colors.text.muted, fontSize: typography.size.xs },
   targetHint: { color: colors.accent.base, fontSize: 13, marginTop: spacing.sm, marginBottom: spacing.lg, fontWeight: '500' },
-  sectionTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: spacing['2xl'], marginBottom: 10 },
+  sectionTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '700', marginTop: spacing['2xl'], marginBottom: 10 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   statCard: {
     width: '48%',
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
   },
-  statValue: { color: colors.accent.base, fontSize: 22, fontWeight: '700' },
+  statValue: { color: colors.accent.base, fontSize: typography.size.xl, fontWeight: '700' },
   statValueBig: { fontSize: 32 },
   statLabel: { color: colors.text.secondary, fontSize: 13, marginTop: spacing.xs },
   card: {
@@ -619,9 +619,9 @@ const styles = StyleSheet.create({
   muscleRowBorder: { borderTopColor: colors.background.border, borderTopWidth: 1 },
   muscleName: { color: colors.text.primary, fontSize: 15, fontWeight: '600' },
   muscleStats: { color: colors.text.secondary, fontSize: 13 },
-  prExercise: { color: colors.text.primary, fontSize: 14, fontWeight: '600' },
-  prType: { color: colors.text.muted, fontSize: 12, marginTop: 2 },
-  prValue: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
+  prExercise: { color: colors.text.primary, fontSize: typography.size.sm, fontWeight: '600' },
+  prType: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2 },
+  prValue: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: colors.background.surface,
@@ -632,8 +632,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.background.border,
   },
-  modalTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700' },
-  modalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.xs, marginBottom: spacing.lg },
+  modalTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '700' },
+  modalSubtitle: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs, marginBottom: spacing.lg },
   modalInput: {
     backgroundColor: colors.background.base,
     borderWidth: 1,
@@ -642,11 +642,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     color: colors.text.primary,
-    fontSize: 22,
+    fontSize: typography.size.xl,
     fontWeight: '700',
     textAlign: 'center',
   },
-  fieldLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: 6 },
+  fieldLabel: { color: colors.text.muted, fontSize: typography.size.xs, fontWeight: '600', letterSpacing: 0.5, marginTop: spacing.md, marginBottom: 6 },
   fieldInput: {
     backgroundColor: colors.background.base,
     borderWidth: 1,
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     color: colors.text.primary,
-    fontSize: 16,
+    fontSize: typography.size.md,
   },
   fieldRow: { flexDirection: 'row', alignItems: 'flex-end' },
   weightInputHighlight: {
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
   },
-  modalSaveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
+  modalSaveBtnText: { color: colors.background.base, fontSize: typography.size.md, fontWeight: '700' },
   chartCard: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,

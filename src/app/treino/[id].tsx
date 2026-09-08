@@ -16,7 +16,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutExercisesRepository, type WorkoutExerciseWithExercise } from '@/repositories/workout-exercises.repository';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { ExerciseRow, WorkoutRow } from '@/types/db';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: { paddingTop: spacing['5xl'], paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
+  back: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '600' },
   titleWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   titleInput: {
     color: colors.text.primary,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     padding: 0,
   },
-  division: { color: colors.text.secondary, fontSize: 14, marginTop: 2 },
+  division: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: 2 },
   card: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -311,13 +311,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cardTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '600' },
+  cardTitle: { color: colors.text.primary, fontSize: typography.size.md, fontWeight: '600' },
   cardMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
-  cardPlan: { color: colors.accent.base, fontSize: 14, marginTop: 6, fontWeight: '500' },
-  removeBtn: { color: colors.status.danger, fontSize: 18, paddingLeft: spacing.md },
+  cardPlan: { color: colors.accent.base, fontSize: typography.size.sm, marginTop: 6, fontWeight: '500' },
+  removeBtn: { color: colors.status.danger, fontSize: typography.size.lg, paddingLeft: spacing.md },
   empty: { alignItems: 'center', paddingTop: spacing['5xl'], paddingHorizontal: spacing['3xl'] },
-  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.sm, textAlign: 'center' },
   addBtn: {
     borderWidth: 1,
     borderColor: colors.background.border,
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startBtnDisabled: { opacity: 0.4 },
-  startBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
+  startBtnText: { color: colors.background.base, fontSize: typography.size.md, fontWeight: '700' },
   cycleWrap: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
   },
-  cycleValue: { color: colors.text.primary, fontSize: 14, lineHeight: 20 },
+  cycleValue: { color: colors.text.primary, fontSize: typography.size.sm, lineHeight: 20 },
   cycleToggleBtn: {
     marginTop: 10,
     alignSelf: 'flex-start',
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     color: colors.text.primary,
-    fontSize: 16,
+    fontSize: typography.size.md,
   },
   pickerItem: {
     backgroundColor: colors.background.surface,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: spacing.sm,
   },
-  pickerItemName: { color: colors.text.primary, fontSize: 16, fontWeight: '500' },
+  pickerItemName: { color: colors.text.primary, fontSize: typography.size.md, fontWeight: '500' },
   pickerItemMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
 });
 

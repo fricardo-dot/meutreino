@@ -12,7 +12,7 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { workoutsRepository } from '@/repositories/workouts.repository';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { WorkoutRow } from '@/types/db';
 
 /**
@@ -191,14 +191,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700' },
+  title: { color: colors.text.primary, fontSize: typography.size['2xl'], fontWeight: '700' },
   newButton: {
     backgroundColor: colors.accent.base,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
     borderRadius: radius.md,
   },
-  newButtonText: { color: colors.background.base, fontSize: 14, fontWeight: '700' },
+  newButtonText: { color: colors.background.base, fontSize: typography.size.sm, fontWeight: '700' },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.md,
     paddingVertical: spacing.xs,
   },
-  deleteIcon: { fontSize: 16 },
+  deleteIcon: { fontSize: typography.size.md },
   cycleBadge: {
     width: 28,
     height: 28,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-  cycleBadgeText: { color: colors.accent.base, fontSize: 14, fontWeight: '700' },
+  cycleBadgeText: { color: colors.accent.base, fontSize: typography.size.sm, fontWeight: '700' },
   moveBtns: { flexDirection: 'row', gap: spacing.xs },
   moveBtn: {
     width: 32,
@@ -238,10 +238,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   moveBtnDisabled: { opacity: 0.3 },
-  moveIcon: { color: colors.accent.base, fontSize: 16, fontWeight: '700' },
-  cardTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  cardSub: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.xs },
+  moveIcon: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '700' },
+  cardTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  cardSub: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs },
   empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: spacing['3xl'] },
-  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.sm, textAlign: 'center' },
 });

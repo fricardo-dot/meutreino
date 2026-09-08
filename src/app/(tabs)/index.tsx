@@ -24,7 +24,7 @@ import {
   type WeekStatus,
 } from '@/services/calendar.service';
 import { trainingCycleService } from '@/services/training-cycle.service';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { WorkoutRow } from '@/types/db';
 
 /**
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   monthLabel: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   navBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  navArrow: { color: colors.accent.base, fontSize: 28, fontWeight: '300' },
+  navArrow: { color: colors.accent.base, fontSize: typography.size['2xl'], fontWeight: '300' },
   todayBtn: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
   },
   newWeekEmoji: { fontSize: 24 },
   newWeekTitle: { color: colors.text.primary, fontSize: 15, fontWeight: '700' },
-  newWeekSubtitle: { color: colors.text.secondary, fontSize: 12, marginTop: 2 },
+  newWeekSubtitle: { color: colors.text.secondary, fontSize: typography.size.xs, marginTop: 2 },
   autoFillBtn: {
     backgroundColor: colors.accent.base,
     borderRadius: radius.sm,
@@ -975,11 +975,11 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.md,
     paddingVertical: spacing.xs,
   },
-  workoutName: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  workoutNameMuted: { color: colors.text.muted, fontSize: 18, fontWeight: '600', fontStyle: 'italic' },
+  workoutName: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  workoutNameMuted: { color: colors.text.muted, fontSize: typography.size.lg, fontWeight: '600', fontStyle: 'italic' },
   tapHint: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
   scheduledHint: { color: colors.accent.base, fontSize: 13, marginTop: 2, fontWeight: '500' },
-  notTrainedHint: { color: colors.text.muted, fontSize: 12, marginTop: 2, fontStyle: 'italic' },
+  notTrainedHint: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2, fontStyle: 'italic' },
   markPastBtn: {
     marginTop: spacing.sm,
     backgroundColor: colors.accent.soft,
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
 
   // ── Dia de descanso ─────────────────────────────────────────────────────
   restBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  restText: { color: colors.text.muted, fontSize: 16, fontWeight: '500' },
+  restText: { color: colors.text.muted, fontSize: typography.size.md, fontWeight: '500' },
 
   // ── Dia vazio (escolher treino / descanso) ──────────────────────────────
   emptyBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2 },
@@ -1015,12 +1015,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
   },
-  emptyBtnText: { color: colors.accent.base, fontSize: 14, fontWeight: '600' },
+  emptyBtnText: { color: colors.accent.base, fontSize: typography.size.sm, fontWeight: '600' },
   restChoiceBtn: {
     paddingVertical: spacing.md,
     paddingHorizontal: 14,
   },
-  restChoiceText: { color: colors.text.muted, fontSize: 14 },
+  restChoiceText: { color: colors.text.muted, fontSize: typography.size.sm },
 
   startBtn: {
     backgroundColor: colors.accent.base,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   startBtnDisabled: { opacity: 0.5 },
-  startBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
+  startBtnText: { color: colors.background.base, fontSize: typography.size.md, fontWeight: '700' },
   chooseBtn: {
     alignSelf: 'center',
     marginTop: 10,
@@ -1038,10 +1038,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   chooseBtnText: { color: colors.text.secondary, fontSize: 13, fontWeight: '500' },
-  mutedText: { color: colors.text.secondary, fontSize: 14 },
-  noSessionText: { color: colors.text.muted, fontSize: 14, fontStyle: 'italic' },
+  mutedText: { color: colors.text.secondary, fontSize: typography.size.sm },
+  noSessionText: { color: colors.text.muted, fontSize: typography.size.sm, fontStyle: 'italic' },
   tapPastHint: { color: colors.accent.base, fontSize: 13, marginTop: 6, fontWeight: '500' },
-  upcomingText: { color: colors.text.muted, fontSize: 18 },
+  upcomingText: { color: colors.text.muted, fontSize: typography.size.lg },
 
   // ── Picker (bottom sheet) ───────────────────────────────────────────────
   pickerOverlay: {
@@ -1058,9 +1058,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.background.border,
   },
-  pickerTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '700' },
-  pickerSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.xs, marginBottom: spacing.lg },
-  pickerEmpty: { color: colors.text.muted, fontSize: 14, marginBottom: spacing.md },
+  pickerTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '700' },
+  pickerSubtitle: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs, marginBottom: spacing.lg },
+  pickerEmpty: { color: colors.text.muted, fontSize: typography.size.sm, marginBottom: spacing.md },
   pickerItem: {
     backgroundColor: colors.background.base,
     borderWidth: 1,
@@ -1069,7 +1069,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: spacing.sm,
   },
-  pickerItemName: { color: colors.text.primary, fontSize: 16, fontWeight: '600' },
+  pickerItemName: { color: colors.text.primary, fontSize: typography.size.md, fontWeight: '600' },
   pickerItemMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
   pickerRestItem: {
     backgroundColor: colors.background.base,
@@ -1099,14 +1099,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  pickerCancelText: { color: colors.text.secondary, fontSize: 16 },
+  pickerCancelText: { color: colors.text.secondary, fontSize: typography.size.md },
 
   // ── Modal "Nova semana" ─────────────────────────────────────────────────
   newWeekSheet: {
     paddingBottom: 28,
   },
-  newWeekModalTitle: { color: colors.text.primary, fontSize: 22, fontWeight: '700' },
-  newWeekModalSubtitle: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.xs, marginBottom: spacing.lg },
+  newWeekModalTitle: { color: colors.text.primary, fontSize: typography.size.xl, fontWeight: '700' },
+  newWeekModalSubtitle: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs, marginBottom: spacing.lg },
   newWeekOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1121,11 +1121,11 @@ const styles = StyleSheet.create({
   newWeekOptionPrimary: {
     borderColor: colors.accent.base,
   },
-  newWeekOptionTitle: { color: colors.text.primary, fontSize: 16, fontWeight: '700' },
+  newWeekOptionTitle: { color: colors.text.primary, fontSize: typography.size.md, fontWeight: '700' },
   newWeekOptionSub: { color: colors.text.secondary, fontSize: 13, marginTop: 2 },
   newWeekFooterHint: {
     color: colors.text.muted,
-    fontSize: 12,
+    fontSize: typography.size.xs,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
     lineHeight: 16,

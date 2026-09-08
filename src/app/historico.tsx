@@ -11,7 +11,7 @@ import {
 
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository, type SessionSummary } from '@/repositories/sessions.repository';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 
 /**
  * Histórico de sessões concluídas.
@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: { paddingTop: spacing['5xl'], paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  back: { color: colors.accent.base, fontSize: 16, fontWeight: '600' },
-  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  back: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '600' },
+  title: { color: colors.text.primary, fontSize: typography.size['2xl'], fontWeight: '700', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   card: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
@@ -128,6 +128,6 @@ const styles = StyleSheet.create({
   },
   statText: { color: colors.text.secondary, fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: spacing['3xl'] },
-  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.sm, textAlign: 'center' },
 });

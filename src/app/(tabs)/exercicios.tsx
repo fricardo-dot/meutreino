@@ -15,7 +15,7 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import type { ExerciseRow, MuscleGroup } from '@/types/db';
 
 /**
@@ -364,14 +364,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { color: colors.text.primary, fontSize: 28, fontWeight: '700' },
+  title: { color: colors.text.primary, fontSize: typography.size['2xl'], fontWeight: '700' },
   newButton: {
     backgroundColor: colors.accent.base,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
     borderRadius: radius.md,
   },
-  newButtonText: { color: colors.background.base, fontSize: 14, fontWeight: '700' },
+  newButtonText: { color: colors.background.base, fontSize: typography.size.sm, fontWeight: '700' },
   searchWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   searchInput: {
     backgroundColor: colors.background.surface,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     color: colors.text.primary,
-    fontSize: 16,
+    fontSize: typography.size.md,
   },
   filtersWrap: { height: 48, justifyContent: 'center', marginBottom: spacing.sm },
   filterChip: {
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent.base,
     borderColor: colors.accent.base,
   },
-  filterText: { color: colors.text.secondary, fontSize: 14, fontWeight: '500', lineHeight: 18, textAlign: 'center', includeFontPadding: false },
+  filterText: { color: colors.text.secondary, fontSize: typography.size.sm, fontWeight: '500', lineHeight: 18, textAlign: 'center', includeFontPadding: false },
   filterTextActive: { color: colors.background.base, fontWeight: '700' },
   card: {
     backgroundColor: colors.background.surface,
@@ -421,19 +421,19 @@ const styles = StyleSheet.create({
   },
   customBadgeText: { color: colors.accent.base, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   deleteBtn: { paddingLeft: spacing.md, paddingVertical: spacing.xs },
-  deleteIcon: { fontSize: 16 },
+  deleteIcon: { fontSize: typography.size.md },
   details: {
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopColor: colors.background.border,
     borderTopWidth: 1,
   },
-  detailLabel: { color: colors.text.muted, fontSize: 12, fontWeight: '600', marginBottom: 2 },
-  detailValue: { color: colors.text.secondary, fontSize: 14, lineHeight: 20 },
+  detailLabel: { color: colors.text.muted, fontSize: typography.size.xs, fontWeight: '600', marginBottom: 2 },
+  detailValue: { color: colors.text.secondary, fontSize: typography.size.sm, lineHeight: 20 },
   noDetails: { color: colors.text.muted, fontSize: 13, fontStyle: 'italic' },
   empty: { alignItems: 'center', paddingTop: spacing['5xl'], paddingHorizontal: spacing['3xl'] },
-  emptyTitle: { color: colors.text.primary, fontSize: 18, fontWeight: '600' },
-  emptyText: { color: colors.text.secondary, fontSize: 14, marginTop: spacing.sm, textAlign: 'center' },
+  emptyTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
+  emptyText: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.sm, textAlign: 'center' },
   modalScreen: { flex: 1, backgroundColor: colors.background.base },
   modalHeader: {
     paddingTop: 56,
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  modalTitle: { color: colors.text.primary, fontSize: 22, fontWeight: '700' },
+  modalTitle: { color: colors.text.primary, fontSize: typography.size.xl, fontWeight: '700' },
   modalClose: { color: colors.text.secondary, fontSize: 20 },
   fieldLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', marginBottom: spacing.sm },
   fieldInput: {
@@ -454,10 +454,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     color: colors.text.primary,
-    fontSize: 16,
+    fontSize: typography.size.md,
     marginBottom: spacing.sm,
   },
-  errorText: { color: colors.status.danger, fontSize: 14, marginTop: spacing.sm },
+  errorText: { color: colors.status.danger, fontSize: typography.size.sm, marginTop: spacing.sm },
   modalFooter: {
     padding: spacing.lg,
     paddingBottom: spacing['3xl'],
@@ -471,5 +471,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: colors.background.base, fontSize: 16, fontWeight: '700' },
+  saveBtnText: { color: colors.background.base, fontSize: typography.size.md, fontWeight: '700' },
 });
