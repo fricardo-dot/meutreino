@@ -9,15 +9,32 @@
  *
  * IMPORTANTE: o nome do cache (CACHE_VERSION) deve mudar quando você quiser
  * forçar todos os usuários a baixar versões novas.
+ *
+ * IMPORTANTE 2: a app é servida num subpath no GitHub Pages (/meutreino/) e na
+ * raiz em dev. Nenhum caminho aqui pode ser absoluto — todos derivam de `BASE`.
  */
 
-const CACHE_VERSION = 'meutreino-v1';
+const CACHE_VERSION = 'meutreino-v2';
+
+/**
+ * Diretório onde este SW está servido, com barra no fim.
+ *  - dev:  "/"
+ *  - prod: "/meutreino/"
+ *
+ * Todo caminho do SW é montado a partir daqui. Escrever "/index.html" direto
+ * funciona em dev e falha em produção, sem erro visível.
+ */
+const BASE = self.location.pathname.replace(/[^/]*$/, '');
+
+/** Monta um caminho absoluto correto a partir do BASE. */
+const path = (file) => BASE + file;
+
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/sql-wasm.wasm',
-  '/icon-1024.png',
+  BASE,
+  path('index.html'),
+  path('manifest.json'),
+  path('sql-wasm.wasm'),
+  path('icon-1024.png'),
 ];
 
 // ── Install: pré-cacheia recursos críticos ────────────────────────────────
@@ -69,7 +86,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.wasm') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.ico') ||
-    url.pathname === '/manifest.json'
+    url.pathname === path('manifest.json')
   ) {
     event.respondWith(cacheFirst(request));
     return;
@@ -136,7 +153,7 @@ async function networkFirstWithFallback(request) {
     // Offline: tenta a página cacheada, senão index.html (SPA fallback).
     const cached = await caches.match(request);
     if (cached) return cached;
-    const indexCached = await caches.match('/index.html');
+    const indexCached = await caches.match(path('index.html'));
     if (indexCached) return indexCached;
     return new Response('Offline', { status: 503 });
   }
