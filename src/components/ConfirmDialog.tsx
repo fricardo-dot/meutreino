@@ -47,7 +47,14 @@ export function ConfirmDialog({
               ]}
               onPress={onConfirm}
             >
-              <Text style={styles.confirmText}>{confirmText}</Text>
+              <Text
+                style={[
+                  styles.confirmText,
+                  destructive ? styles.confirmTextDestructive : styles.confirmTextNormal,
+                ]}
+              >
+                {confirmText}
+              </Text>
             </Pressable>
           </View>
         </Pressable>
@@ -115,8 +122,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.danger,
   },
   confirmText: {
-    color: colors.text.onFilled,
     fontSize: 15,
     fontWeight: '700',
+  },
+  /**
+   * Botão lima: texto escuro (16,19:1). Branco sobre o lima daria 1,21:1 —
+   * ilegível. É também a convenção de todo botão de fundo accent do app.
+   */
+  confirmTextNormal: {
+    color: colors.background.base,
+  },
+  /** Botão vermelho: branco (3,76:1), o padrão usual para ação destrutiva. */
+  confirmTextDestructive: {
+    color: colors.text.onFilled,
   },
 });
