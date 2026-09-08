@@ -76,12 +76,11 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
   token mais próximo "para padronizar" — isso muda o layout.
 - `fontSize` usa `typography.size` pela mesma regra do espaçamento: token
   quando bate exato, literal quando não bate.
-- **Não use `typography.variants`.** Eles trazem `lineHeight` como
-  multiplicador (1.2, 1.4), mas no React Native `lineHeight` é em **pixels** —
-  espalhar um variant aplica entrelinha de 1,2 px. Só os dois componentes
-  mortos (`ScreenHeader`, `DatabaseErrorView`) os usam. Ou os variants são
-  corrigidos para px, ou saem do tema; até lá, componha com
-  `typography.size` + `fontWeight`.
+- **`lineHeight` no React Native é em PIXELS, não multiplicador.** Os
+  `typography.variants` já guardam o valor em px, com a proporção no
+  comentário ao lado. Nunca escreva a proporção crua (1.2, 1.4) ali: o texto
+  fica com entrelinha de 1,2 px. O arquivo nasceu assim e passou despercebido
+  porque nenhum componente vivo usava as variantes.
 - Contagem de tempo é baseada em **timestamp de término**, nunca em contador em
   memória — o app volta do background com o valor certo (`useRestTimer`).
 - Comentários em português, explicando o **porquê**.
