@@ -40,17 +40,37 @@ export const statsService = {
       total_duration: number | null;
       sessions_7d: number;
     }>(
+      // Cada agregado tem sua própria subconsulta, na granularidade certa.
+      //
+      // Antes, tudo saía de um único SELECT sobre o JOIN de sessões com
+      // séries — e os campos da SESSÃO eram somados uma vez por SÉRIE. Uma
+      // sessão de 1h com 3 séries virava 3h de treino, e contava como 3
+      // sessões na frequência semanal.
       `SELECT
-         COUNT(DISTINCT s.id)                              AS total_sessions,
-         COUNT(ss.id)                                       AS total_sets,
-         COALESCE(SUM(ss.weight * ss.reps), 0)              AS total_volume,
-         COALESCE(SUM(s.duration_seconds), 0)               AS total_duration,
-         COALESCE(SUM(CASE WHEN s.started_at >= datetime('now', '-7 days')
-                           THEN 1 ELSE 0 END), 0)           AS sessions_7d
-       FROM sessions s
-       LEFT JOIN session_exercises se ON se.session_id = s.id
-       LEFT JOIN session_sets ss ON ss.session_exercise_id = se.id
-       WHERE s.status = 'concluida';`,
+         (SELECT COUNT(*)
+            FROM sessions
+           WHERE status = 'concluida')                       AS total_sessions,
+
+         (SELECT COALESCE(SUM(duration_seconds), 0)
+            FROM sessions
+           WHERE status = 'concluida')                       AS total_duration,
+
+         (SELECT COUNT(*)
+            FROM sessions
+           WHERE status = 'concluida'
+             AND started_at >= datetime('now', '-7 days'))   AS sessions_7d,
+
+         (SELECT COUNT(ss.id)
+            FROM session_sets ss
+            JOIN session_exercises se ON se.id = ss.session_exercise_id
+            JOIN sessions s           ON s.id  = se.session_id
+           WHERE s.status = 'concluida')                     AS total_sets,
+
+         (SELECT COALESCE(SUM(ss.weight * ss.reps), 0)
+            FROM session_sets ss
+            JOIN session_exercises se ON se.id = ss.session_exercise_id
+            JOIN sessions s           ON s.id  = se.session_id
+           WHERE s.status = 'concluida')                     AS total_volume;`,
     );
 
     return {
