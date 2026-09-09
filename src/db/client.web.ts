@@ -43,8 +43,8 @@ export async function getDatabase(): Promise<AppDatabase> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const { adapter, state } = await createWebDatabase();
-    await initializeSchema(adapter, state);
+    const { adapter, state, tinhaSnapshot } = await createWebDatabase();
+    await initializeSchema(adapter, state, tinhaSnapshot);
     dbInstance = adapter;
     return adapter;
   })();
@@ -83,7 +83,12 @@ interface AdapterState {
  *
  * Retorna o adapter e o state interno (pra persistência final).
  */
-async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: AdapterState }> {
+async function createWebDatabase(): Promise<{
+  adapter: AppDatabase;
+  state: AdapterState;
+  /** false = banco criado agora, do zero. */
+  tinhaSnapshot: boolean;
+}> {
   // Caminho do WASM — relativo à página atual, funciona em subpath sem config.
   // Em dev: página em / → "./sql-wasm.wasm" resolve pra "/sql-wasm.wasm".
   // Em prod: página em /meutreino/ → "./sql-wasm.wasm" resolve pra "/meutreino/sql-wasm.wasm".
@@ -102,10 +107,12 @@ async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: Adapt
   // Restaura bytes salvos, se houver (preserva dados entre sessões).
   let database: Database;
   let storageVersion = 0;
+  let jaTinhaBytes = false;
   try {
     const snapshot = await loadSnapshot();
     database = snapshot ? new SQL.Database(snapshot.bytes) : new SQL.Database();
     storageVersion = snapshot ? snapshot.version : 0;
+    jaTinhaBytes = snapshot !== null;
   } catch (error) {
     throw new DatabaseInitError(
       'Não foi possível acessar o armazenamento local do navegador.',
@@ -121,7 +128,7 @@ async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: Adapt
   };
 
   const adapter = buildAdapter(state);
-  return { adapter, state };
+  return { adapter, state, tinhaSnapshot: jaTinhaBytes };
 }
 
 /**
@@ -135,8 +142,11 @@ function buildAdapter(state: AdapterState): AppDatabase {
       enqueueWrite(() => execDireto(state, sql, opts)),
     runAsync: (sql, params, ...rest) =>
       enqueueWrite(() => runDireto(state, sql, normalizeParams(params, rest))),
-    // Leituras não entram na fila: são inofensivas e enfileirá-las travaria
-    // uma leitura feita de dentro do callback da transação.
+    // Leituras NÃO entram na fila, e isso tem um preço: uma leitura disparada
+    // enquanto uma transação está aberta enxerga o estado não commitado dela.
+    // Enfileirá-las não é opção — travaria as leituras feitas de dentro do
+    // próprio callback (o import de backup faz PRAGMA table_info ali dentro).
+    // O sql.js é uma conexão só, sem snapshot isolation para oferecer.
     getFirstAsync: (sql, params, ...rest) =>
       getFirstAsyncImpl(state, sql, normalizeParams(params, rest)),
     getAllAsync: (sql, params, ...rest) =>
@@ -255,7 +265,17 @@ async function runDireto(
     idStmt.free();
   }
 
-  await markDirty(state);
+  // Só marca sujo se a linha realmente mudou.
+  //
+  // Sem isto, um comando que não altera nada — `INSERT OR IGNORE` que ignora,
+  // `UPDATE` sem correspondência — reexportava o banco inteiro para o
+  // IndexedDB. Além do desperdício, isso avançava o contador de versão do
+  // snapshot: como `ensureSeedData` roda um INSERT OR IGNORE por exercício em
+  // TODA abertura, só abrir o app numa segunda aba invalidava a primeira, que
+  // passava a receber StaleDatabaseError sem ninguém ter mudado dado nenhum.
+  if (changes > 0) {
+    await markDirty(state);
+  }
   return { lastInsertRowId, changes };
 }
 
@@ -322,17 +342,10 @@ async function runRootTransaction<T>(
   state.database.run('BEGIN IMMEDIATE;');
   state.transactionDepth = 1;
 
+  let result: T;
   try {
-    const result = await callback(buildTransactionExecutor(state));
+    result = await callback(buildTransactionExecutor(state));
     state.database.run('COMMIT');
-    state.transactionDepth = 0;
-
-    // Persiste somente após COMMIT bem-sucedido.
-    if (state.dirty) {
-      await persistDatabase(state);
-      state.dirty = false;
-    }
-    return result;
   } catch (error) {
     state.database.run('ROLLBACK');
     state.transactionDepth = 0;
@@ -340,6 +353,21 @@ async function runRootTransaction<T>(
     state.dirty = false;
     throw error;
   }
+  state.transactionDepth = 0;
+
+  // Daqui pra frente o COMMIT já aconteceu: qualquer falha é de PERSISTÊNCIA,
+  // não da transação. Por isso está FORA do try acima — cair no catch faria um
+  // ROLLBACK sem transação aberta, e o "cannot rollback" do sql.js esconderia
+  // o erro de verdade (que pode ser o StaleDatabaseError, cuja mensagem manda
+  // recarregar a aba).
+  //
+  // `dirty` só é limpo se a gravação der certo: se falhou, o banco em memória
+  // segue à frente do disco e a próxima gravação tenta de novo.
+  if (state.dirty) {
+    await persistDatabase(state);
+    state.dirty = false;
+  }
+  return result;
 }
 
 
@@ -349,11 +377,13 @@ async function runRootTransaction<T>(
  * Aplica PRAGMA foreign_keys + migrations pendentes.
  * Reutiliza o mesmo `migrations.ts` do client nativo.
  *
- * Recebe o adapter E o state (pra persistir o estado final).
+ * `tinhaSnapshot` diz se o banco veio do disco ou foi criado agora — é o que
+ * decide se a inicialização precisa gravar.
  */
 async function initializeSchema(
   db: AppDatabase,
   state: AdapterState,
+  tinhaSnapshot: boolean,
 ): Promise<void> {
   await db.execAsync('PRAGMA foreign_keys = ON;', { persist: false });
 
@@ -383,8 +413,16 @@ async function initializeSchema(
     persist: false,
   });
 
-  // Persiste o estado final após inicialização (banco novo ou migrado).
-  await persistDatabase(state);
+  // Grava SÓ se a inicialização mudou alguma coisa: banco criado agora, ou
+  // migration aplicada.
+  //
+  // Gravar sempre era um problema real desde que o snapshot ganhou contador de
+  // versão: abrir o app numa segunda aba regravava o MESMO banco, avançava o
+  // contador, e a primeira aba passava a receber StaleDatabaseError na próxima
+  // série registrada — sem que a segunda aba tivesse mudado nada.
+  if (!tinhaSnapshot || pending.length > 0) {
+    await persistDatabase(state);
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
