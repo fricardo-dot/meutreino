@@ -139,6 +139,13 @@ export const backupService = {
 
         let imported = 0;
         for (const row of rows) {
+          // Linha que não é objeto (arquivo corrompido ou de outra origem)
+          // faria o `c in row` abaixo lançar TypeError. Pula e segue.
+          if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+            console.warn(`[backup] Linha inválida em "${table}" — pulando.`);
+            continue;
+          }
+
           // Apenas colunas presentes tanto no DB quanto na linha (ordem do DB).
           // Isto descarta automaticamente colunas desconhecidas do JSON
           // (forward compat) e tolera linhas com colunas opcionais ausentes.
@@ -273,8 +280,26 @@ function parseBackup(jsonString: string): BackupPayload {
   }
 
   const obj = parsed as Record<string, unknown>;
-  if (typeof obj.version !== 'number') {
+  if (typeof obj.version !== 'number' || !Number.isInteger(obj.version) || obj.version < 1) {
     throw new Error('Backup inválido: campo "version" ausente ou inválido.');
+  }
+
+  // Recusa formato mais novo do que este app entende.
+  //
+  // Antes o `version` só precisava ser um número — nunca era comparado com
+  // BACKUP_FORMAT_VERSION. Um arquivo de formato futuro, com semântica
+  // diferente, era aceito: as colunas reconhecidas entravam, as demais eram
+  // descartadas em silêncio, e a UI anunciava "importação concluída" sobre um
+  // banco parcialmente sobrescrito.
+  //
+  // Formato ANTIGO continua aceito de propósito: a importação já tolera
+  // colunas ausentes, e recusar um backup velho deixaria o usuário sem saída.
+  if (obj.version > BACKUP_FORMAT_VERSION) {
+    throw new Error(
+      `Este backup foi criado por uma versão mais nova do app ` +
+        `(formato v${obj.version}; este app entende até v${BACKUP_FORMAT_VERSION}). ` +
+        `Atualize o app para importar este arquivo.`,
+    );
   }
   if (typeof obj.exportedAt !== 'string') {
     throw new Error('Backup inválido: campo "exportedAt" ausente ou inválido.');
