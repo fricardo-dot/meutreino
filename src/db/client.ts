@@ -1,6 +1,10 @@
 import * as SQLite from 'expo-sqlite';
 
-import { migrations, TARGET_DB_VERSION } from './migrations';
+import {
+  migrations,
+  recusarVersaoFutura,
+  TARGET_DB_VERSION,
+} from './migrations';
 import type {
   AppDatabase,
   DbTransaction,
@@ -26,49 +30,92 @@ let initPromise: Promise<AppDatabase> | null = null;
  * O expo-sqlite não aceita `{ persist }` em `execAsync` (opção exclusiva do
  * client web). Este wrapper simplesmente ignora a opção — no nativo, todas as
  * escritas já são persistidas automaticamente pelo sistema de arquivos.
+ *
+ * A fila de escrita e a transação EXCLUSIVA existem para dar aqui a mesma
+ * semântica do client web. Sem elas, o mesmo código se comportava diferente
+ * nas duas plataformas: no web uma escrita concorrente esperava a transação
+ * terminar, e no nativo ela entrava na transação alheia e sumia no ROLLBACK —
+ * exatamente o defeito que o contrato do `tx` foi criado para eliminar.
  */
 function wrapNative(db: SQLite.SQLiteDatabase): AppDatabase {
+  // Mesma fila do client web: escritas pela conexão executam uma de cada vez,
+  // e uma transação segura a fila enquanto dura.
+  let writeQueue: Promise<unknown> = Promise.resolve();
+  function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const operation = writeQueue.catch(() => undefined).then(task);
+    writeQueue = operation.catch(() => undefined);
+    return operation;
+  }
+
+  /**
+   * Adapta uma conexão do expo-sqlite ao executor da interface.
+   *
+   * Serve tanto para a conexão principal quanto para o `txn` que o expo
+   * entrega dentro de `withExclusiveTransactionAsync` — que, segundo a própria
+   * documentação, é por onde TODO o SQL do bloco precisa passar.
+   */
+  function adaptar(conn: SQLite.SQLiteDatabase): DbTransaction {
+    return {
+      execAsync(sql: string, _opts?: ExecOptions): Promise<void> {
+        return conn.execAsync(sql);
+      },
+      runAsync(
+        sql: string,
+        params?: SqlParameter[] | SqlParameter,
+        ...rest: SqlParameter[]
+      ): Promise<RunResult> {
+        const all = normalizeParams(params, rest);
+        return conn.runAsync(sql, all).then((r) => ({
+          lastInsertRowId: Number(r.lastInsertRowId),
+          changes: r.changes,
+        }));
+      },
+      getFirstAsync<T>(
+        sql: string,
+        params?: SqlParameter[] | SqlParameter,
+        ...rest: SqlParameter[]
+      ): Promise<T | null> {
+        const all = normalizeParams(params, rest);
+        return conn.getFirstAsync<T>(sql, all).then((r) => (r === undefined ? null : r));
+      },
+      getAllAsync<T>(
+        sql: string,
+        params?: SqlParameter[] | SqlParameter,
+        ...rest: SqlParameter[]
+      ): Promise<T[]> {
+        const all = normalizeParams(params, rest);
+        return conn.getAllAsync<T>(sql, all);
+      },
+    };
+  }
+
+  const direto = adaptar(db);
+
   const conexao: AppDatabase = {
-    execAsync(sql: string, _opts?: ExecOptions): Promise<void> {
-      return db.execAsync(sql);
-    },
-    runAsync(
-      sql: string,
-      params?: SqlParameter[] | SqlParameter,
-      ...rest: SqlParameter[]
-    ): Promise<RunResult> {
-      const all = normalizeParams(params, rest);
-      return db.runAsync(sql, all).then((r) => ({
-        lastInsertRowId: Number(r.lastInsertRowId),
-        changes: r.changes,
-      }));
-    },
-    getFirstAsync<T>(
-      sql: string,
-      params?: SqlParameter[] | SqlParameter,
-      ...rest: SqlParameter[]
-    ): Promise<T | null> {
-      const all = normalizeParams(params, rest);
-      return db.getFirstAsync<T>(sql, all).then((r) => (r === undefined ? null : r));
-    },
-    getAllAsync<T>(
-      sql: string,
-      params?: SqlParameter[] | SqlParameter,
-      ...rest: SqlParameter[]
-    ): Promise<T[]> {
-      const all = normalizeParams(params, rest);
-      return db.getAllAsync<T>(sql, all);
-    },
+    // Escritas pela conexão entram na fila, como no web.
+    execAsync: (sql, opts) => enqueueWrite(() => direto.execAsync(sql, opts)),
+    runAsync: (sql, params, ...rest) =>
+      enqueueWrite(() => direto.runAsync(sql, params, ...rest)),
+    // Leituras não entram na fila (mesma decisão, e mesmas limitações, do web).
+    getFirstAsync: (sql, params, ...rest) => direto.getFirstAsync(sql, params, ...rest),
+    getAllAsync: (sql, params, ...rest) => direto.getAllAsync(sql, params, ...rest),
+
     withTransactionAsync<T>(callback: (tx: DbTransaction) => Promise<T>): Promise<T> {
-      // No nativo o expo-sqlite já serializa o acesso à conexão, então o `tx`
-      // é a própria conexão — o que muda é o contrato: o callback recebe por
-      // onde deve executar, em vez de fechar sobre a conexão externa. Isso
-      // mantém os call sites idênticos nas duas plataformas.
-      //
-      // expo-sqlite aceita callback que retorna void ou T; daí o cast.
-      return db.withTransactionAsync(
-        (() => callback(conexao)) as () => Promise<void>,
-      ) as unknown as Promise<T>;
+      return enqueueWrite(async () => {
+        // `withTransactionAsync` do expo é explicitamente NÃO exclusivo: outra
+        // escrita pode entrar no meio. A variante exclusiva é a que entrega o
+        // `txn` e serializa de verdade.
+        //
+        // O valor devolvido pelo callback é capturado aqui porque o expo
+        // descarta o retorno do task — sem isto, `withTransactionAsync` era
+        // tipado como Promise<T> e resolvia `undefined` no nativo, enquanto o
+        // web devolvia o valor certo.
+        let resultado!: T;
+        await db.withExclusiveTransactionAsync(async (txn) => {
+          resultado = await callback(adaptar(txn));
+        });
+        return resultado;
+      });
     },
   };
 
@@ -140,6 +187,7 @@ async function runMigrations(db: AppDatabase): Promise<void> {
     'PRAGMA user_version;',
   );
   const currentVersion = row?.user_version ?? 0;
+  recusarVersaoFutura(currentVersion);
 
   const pending = migrations.filter((m) => m.version > currentVersion);
 

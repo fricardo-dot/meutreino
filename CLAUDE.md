@@ -24,6 +24,10 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
   expõe `withTransactionAsync` de propósito.
 - `execAsync` com PRAGMA ou SELECT exige `{ persist: false }` — sem isso o
   client web reexporta o banco inteiro pro IndexedDB à toa.
+- **DDL e PRAGMA vão por `execAsync`, nunca por `runAsync`.** O client web só
+  persiste um `runAsync` que tenha alterado linha, e `getRowsModified()`
+  devolve 0 para DDL — um `CREATE TABLE` por `runAsync` mudaria só a memória
+  e sumiria no reload.
 - **Repositórios só persistem.** Recebem `AppDatabase`, `DbExecutor` ou `tx`
   como primeiro argumento. Regra de negócio e atomicidade ficam em
   `src/services/`: `workoutEngine.saveSet` grava série + PR num único

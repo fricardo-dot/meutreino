@@ -1,6 +1,10 @@
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 
-import { migrations, TARGET_DB_VERSION } from './migrations';
+import {
+  migrations,
+  recusarVersaoFutura,
+  TARGET_DB_VERSION,
+} from './migrations';
 import { loadSnapshot, saveSnapshot } from './web-storage';
 import type {
   AppDatabase,
@@ -265,7 +269,7 @@ async function runDireto(
     idStmt.free();
   }
 
-  // Só marca sujo se a linha realmente mudou.
+  // Só suja o banco se a linha realmente mudou.
   //
   // Sem isto, um comando que não altera nada — `INSERT OR IGNORE` que ignora,
   // `UPDATE` sem correspondência — reexportava o banco inteiro para o
@@ -273,7 +277,16 @@ async function runDireto(
   // snapshot: como `ensureSeedData` roda um INSERT OR IGNORE por exercício em
   // TODA abertura, só abrir o app numa segunda aba invalidava a primeira, que
   // passava a receber StaleDatabaseError sem ninguém ter mudado dado nenhum.
+  //
+  // Mas a tentativa de gravar não depende de ESTE comando ter mudado algo: se
+  // uma gravação anterior falhou, `dirty` continua true e o disco está
+  // atrasado. Repetir uma operação idempotente (o mesmo INSERT OR IGNORE, que
+  // agora é ignorado) precisa mesmo assim tentar descarregar o pendente —
+  // senão a alteração antiga ficava só na memória e sumia ao fechar a aba.
   if (changes > 0) {
+    state.dirty = true;
+  }
+  if (state.dirty) {
     await markDirty(state);
   }
   return { lastInsertRowId, changes };
@@ -391,6 +404,7 @@ async function initializeSchema(
     'PRAGMA user_version;',
   );
   const currentVersion = row?.user_version ?? 0;
+  recusarVersaoFutura(currentVersion);
   const pending = migrations.filter((m) => m.version > currentVersion);
 
   for (const migration of pending) {

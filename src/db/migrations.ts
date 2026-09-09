@@ -79,3 +79,25 @@ export const migrations: Migration[] = [
 
 /** Versão alvo atual do schema (maior version das migrations). */
 export const TARGET_DB_VERSION = migrations[migrations.length - 1].version;
+
+/**
+ * Recusa abrir um banco cuja versão é MAIOR que a que este build entende.
+ *
+ * Acontece de verdade num PWA: o app fica instalado em mais de um aparelho e
+ * um deles pode estar numa versão anterior. Sem esta checagem, o build antigo
+ * abria um banco migrado pelo novo, não via migration pendente nenhuma
+ * (`m.version > currentVersion` não casa com nada) e ainda assim regravava
+ * `PRAGMA user_version` para o alvo dele — rebaixando o banco e passando a
+ * escrever com código que não conhece o schema novo.
+ *
+ * Falhar aqui é o comportamento certo: a tela de erro pede para atualizar o
+ * app, e os dados ficam intactos.
+ */
+export function recusarVersaoFutura(currentVersion: number): void {
+  if (currentVersion > TARGET_DB_VERSION) {
+    throw new Error(
+      `O banco está na versão ${currentVersion}, mais nova que a versão ` +
+        `${TARGET_DB_VERSION} que este app entende. Atualize o app.`,
+    );
+  }
+}
