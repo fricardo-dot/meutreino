@@ -135,6 +135,8 @@ export const backupService = {
           continue;
         }
 
+        const pkCols = await getPrimaryKey(db, table);
+
         let imported = 0;
         for (const row of rows) {
           // Apenas colunas presentes tanto no DB quanto na linha (ordem do DB).
@@ -146,11 +148,47 @@ export const backupService = {
           const placeholders = cols.map(() => '?').join(', ');
           const params = cols.map((c) => toSqlValue(row[c]));
 
-          await db.runAsync(
-            `INSERT OR REPLACE INTO ${table} (${cols.join(', ')})
-             VALUES (${placeholders});`,
-            params,
-          );
+          // UPSERT, não REPLACE.
+          //
+          // `INSERT OR REPLACE` parece um upsert mas não é: o SQLite APAGA a
+          // linha conflitante antes de inserir a nova, e o DELETE dispara as
+          // foreign keys. Com o schema deste app isso dava dois estragos:
+          //   - apagar um `exercise` referenciado por `workout_exercises`
+          //     (ON DELETE RESTRICT) abortava a importação inteira;
+          //   - apagar um `workout` levava junto, por ON DELETE CASCADE, os
+          //     `workout_exercises` e `scheduled_workouts` locais — some
+          //     silenciosamente o que não estivesse no arquivo importado.
+          //
+          // `ON CONFLICT DO UPDATE` atualiza a linha no lugar: nenhum DELETE,
+          // nenhuma cascata. Se a linha do backup colidir com OUTRA linha por
+          // um índice único que não seja a PK (dois exercícios de mesmo nome
+          // com ids diferentes, por exemplo), a importação falha e a transação
+          // inteira é desfeita — o usuário mantém os dados que tinha, que é
+          // muito melhor que apagá-los em silêncio.
+          const temPk = pkCols.length > 0 && pkCols.every((c) => cols.includes(c));
+          const colsParaAtualizar = cols.filter((c) => !pkCols.includes(c));
+
+          let sql: string;
+          if (!temPk) {
+            // Sem PK na linha (não ocorre neste schema): insere e deixa o
+            // SQLite atribuir o id.
+            sql = `INSERT INTO ${table} (${cols.join(', ')})
+                   VALUES (${placeholders});`;
+          } else if (colsParaAtualizar.length === 0) {
+            // A linha só traz a própria PK — não há o que atualizar.
+            sql = `INSERT INTO ${table} (${cols.join(', ')})
+                   VALUES (${placeholders})
+                   ON CONFLICT(${pkCols.join(', ')}) DO NOTHING;`;
+          } else {
+            sql = `INSERT INTO ${table} (${cols.join(', ')})
+                   VALUES (${placeholders})
+                   ON CONFLICT(${pkCols.join(', ')}) DO UPDATE SET
+                     ${colsParaAtualizar
+                       .map((c) => `${c} = excluded.${c}`)
+                       .join(', ')};`;
+          }
+
+          await db.runAsync(sql, params);
           imported += 1;
         }
 
@@ -177,6 +215,25 @@ async function getTableColumns(
     `PRAGMA table_info(${table});`,
   );
   return rows.map((r) => r.name);
+}
+
+/**
+ * Colunas que formam a chave primária da tabela, na ordem declarada.
+ *
+ * Usada como alvo do UPSERT na importação. Quase todas as tabelas usam `id`;
+ * `app_metadata` usa `key`.
+ */
+async function getPrimaryKey(
+  db: AppDatabase,
+  table: BackupTableName,
+): Promise<string[]> {
+  const rows = await db.getAllAsync<{ name: string; pk: number }>(
+    `PRAGMA table_info(${table});`,
+  );
+  return rows
+    .filter((r) => r.pk > 0)
+    .sort((a, b) => a.pk - b.pk)
+    .map((r) => r.name);
 }
 
 /**
