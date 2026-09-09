@@ -125,6 +125,28 @@ export const workoutEngine = {
 
     return { volume, estimated1RM, brokenPRs, restEndsAt };
   },
+
+  /**
+   * Apaga todas as séries de um exercício da sessão ("começar do zero"),
+   * ATOMICAMENTE.
+   *
+   * A ordem importa: `personal_records.session_set_id` usa ON DELETE RESTRICT,
+   * então apagar as séries antes dos recordes falha com FOREIGN KEY constraint.
+   * Era exatamente o que acontecia — o botão de reset quebrava justamente
+   * quando alguma das séries tinha batido um recorde.
+   *
+   * Os recordes daquelas séries somem junto: eles apontam para uma série que
+   * deixou de existir. É a mesma decisão de `sessions.deleteSession`.
+   */
+  async resetSessionExerciseSets(
+    db: AppDatabase,
+    sessionExerciseId: number,
+  ): Promise<void> {
+    await db.withTransactionAsync(async () => {
+      await personalRecordsRepository.removeBySessionExercise(db, sessionExerciseId);
+      await sessionSetsRepository.removeAllFromSessionExercise(db, sessionExerciseId);
+    });
+  },
 };
 
 /**

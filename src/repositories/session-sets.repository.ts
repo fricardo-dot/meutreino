@@ -104,12 +104,16 @@ export const sessionSetsRepository = {
   /**
    * Remove TODAS as séries de um exercício da sessão.
    * Usado pra "começar do zero" um exercício dentro da sessão.
+   *
+   * NÃO chame direto: os recordes que apontam para estas séries usam
+   * ON DELETE RESTRICT e precisam sair antes. Use
+   * `workoutEngine.resetSessionExerciseSets`, que faz os dois numa transação.
    */
   async removeAllFromSessionExercise(
-    db: AppDatabase,
+    executor: DbExecutor,
     sessionExerciseId: number,
   ): Promise<void> {
-    await db.runAsync(
+    await executor.runAsync(
       'DELETE FROM session_sets WHERE session_exercise_id = ?;',
       [sessionExerciseId],
     );

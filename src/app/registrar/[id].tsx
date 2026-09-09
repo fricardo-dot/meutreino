@@ -280,10 +280,7 @@ function ExerciseBlock({
 
   async function confirmReset() {
     if (!db) return;
-    await sessionSetsRepository.removeAllFromSessionExercise(
-      db,
-      sessionExercise.id,
-    );
+    await workoutEngine.resetSessionExerciseSets(db, sessionExercise.id);
     setWeight('0');
     setReps('0');
     setRir('');

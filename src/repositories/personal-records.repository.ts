@@ -106,4 +106,25 @@ export const personalRecordsRepository = {
       [exerciseId],
     );
   },
+
+  /**
+   * Remove os recordes que apontam para séries de um exercício da sessão.
+   *
+   * Existe porque `personal_records.session_set_id` usa ON DELETE RESTRICT:
+   * apagar uma série que gerou recorde falha com FOREIGN KEY constraint se os
+   * recordes não saírem antes. Mesma razão do `deleteSession` em
+   * `sessions.repository`.
+   */
+  async removeBySessionExercise(
+    executor: DbExecutor,
+    sessionExerciseId: number,
+  ): Promise<void> {
+    await executor.runAsync(
+      `DELETE FROM personal_records
+       WHERE session_set_id IN (
+         SELECT id FROM session_sets WHERE session_exercise_id = ?
+       );`,
+      [sessionExerciseId],
+    );
+  },
 };
