@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 import type { UserProfileInput, UserProfileRow } from '@/types/db';
 
@@ -26,7 +27,7 @@ export const userProfileRepository = {
    * Atualiza campos do perfil (apenas os informados).
    */
   async update(
-    db: AppDatabase,
+    db: DbExecutor,
     input: UserProfileInput,
   ): Promise<void> {
     await db.runAsync(

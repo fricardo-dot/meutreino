@@ -279,21 +279,35 @@ function ExerciseBlock({
 
   // Autofill: pré-preenche peso/reps/RIR da última série (mesma sessão ou histórica).
   // Roda na montagem e quando o número de séries muda (após salvar).
+  // Sugestão de autofill.
+  //
+  // `cancelado` existe porque a consulta é assíncrona e o usuário pode começar
+  // a digitar antes de ela voltar: sem isso, a sugestão sobrescrevia o que ele
+  // acabara de escrever. Também protege contra aplicar a resposta depois que o
+  // bloco desmontou ou trocou de exercício.
   useEffect(() => {
     if (!db) return;
+    let cancelado = false;
     void (async () => {
-      const suggestion = await autofillService.suggestNextSet(
-        db,
-        sessionExercise.exercise_id,
-        nextSetNumber,
-        sessionExercise.id,
-      );
-      if (suggestion.hasHistory) {
+      try {
+        const suggestion = await autofillService.suggestNextSet(
+          db,
+          sessionExercise.exercise_id,
+          nextSetNumber,
+          sessionExercise.id,
+        );
+        if (cancelado || !suggestion.hasHistory) return;
         setWeight(formatNumber(suggestion.weight));
         setReps(formatNumber(suggestion.reps));
         setRir(suggestion.rir !== null ? String(suggestion.rir) : '');
+      } catch {
+        // Sugestão é conveniência: falhar aqui só significa começar do zero,
+        // não vale interromper o registro do treino com uma mensagem.
       }
     })();
+    return () => {
+      cancelado = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, sessionExercise.id, sessionExercise.exercise_id, nextSetNumber]);
 

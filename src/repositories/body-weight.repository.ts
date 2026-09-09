@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 import type { BodyWeightEntryInput, BodyWeightEntryRow } from '@/types/db';
 
@@ -11,7 +12,7 @@ export const bodyWeightRepository = {
   /**
    * Insere ou atualiza a pesagem de um dia. Retorna o id.
    */
-  async upsert(db: AppDatabase, input: BodyWeightEntryInput): Promise<number> {
+  async upsert(db: DbExecutor, input: BodyWeightEntryInput): Promise<number> {
     const result = await db.runAsync(
       `INSERT INTO body_weight_entries (weight_kg, date, notes)
        VALUES (?, ?, ?)

@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 import type { WorkoutRow } from '@/types/db';
 
@@ -80,7 +81,7 @@ export const trainingCycleService = {
   /**
    * Lista todos os workouts do ciclo em ordem (para exibição/edição).
    */
-  async listCycleWorkouts(db: AppDatabase): Promise<WorkoutRow[]> {
+  async listCycleWorkouts(db: DbExecutor): Promise<WorkoutRow[]> {
     return db.getAllAsync<WorkoutRow>(
       `SELECT * FROM workouts
        WHERE is_active = 1 AND cycle_order IS NOT NULL
@@ -99,7 +100,7 @@ export const trainingCycleService = {
    * @returns array de workout IDs na ordem rodada (até 5).
    */
   async getCycleSequence(
-    db: AppDatabase,
+    db: DbExecutor,
     startWorkoutId: number | null,
   ): Promise<number[]> {
     const all = await this.listCycleWorkouts(db);

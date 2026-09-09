@@ -403,16 +403,27 @@ export default function PerfilScreen() {
         onSave={async (input) => {
           if (!db) return;
           const { today_weight_kg, ...profileInput } = input;
-          // Atualiza dados do perfil.
-          await userProfileRepository.update(db, profileInput);
-          // Salva pesagem de hoje (se informada).
-          if (today_weight_kg && today_weight_kg > 0) {
-            const today = new Date();
-            const dateISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            await bodyWeightRepository.upsert(db, { weight_kg: today_weight_kg, date: dateISO });
+          try {
+            // Perfil e pesagem numa transação só: gravar o perfil e falhar na
+            // pesagem deixava o banco meio atualizado e o modal aberto sem
+            // dizer nada.
+            await db.withTransactionAsync(async (tx) => {
+              await userProfileRepository.update(tx, profileInput);
+              if (today_weight_kg && today_weight_kg > 0) {
+                const today = new Date();
+                const dateISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                await bodyWeightRepository.upsert(tx, {
+                  weight_kg: today_weight_kg,
+                  date: dateISO,
+                });
+              }
+            });
+            setEditingProfile(false);
+            void load();
+          } catch (error) {
+            setEditingProfile(false);
+            setErrorMsg(mensagemDeErro(error));
           }
-          setEditingProfile(false);
-          void load();
         }}
       />
     </ScrollView>
@@ -465,12 +476,14 @@ function ProfileEditModal({
     height_cm?: number | null;
     target_weight_kg?: number | null;
     today_weight_kg?: number | null;
-  }) => void;
+  }) => Promise<void>;
 }) {
   const [name, setName] = useState('');
   const [height, setHeight] = useState('');
   const [target, setTarget] = useState('');
   const [todayWeight, setTodayWeight] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [erroCampo, setErroCampo] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible && profile) {
@@ -481,13 +494,52 @@ function ProfileEditModal({
     }
   }, [visible, profile, latestWeight]);
 
-  function handleSave() {
-    onSave({
-      name: name.trim() || null,
-      height_cm: height ? parseFloat(height.replace(',', '.')) : null,
-      target_weight_kg: target ? parseFloat(target.replace(',', '.')) : null,
-      today_weight_kg: todayWeight ? parseFloat(todayWeight.replace(',', '.')) : null,
-    });
+  /**
+   * Lê um campo numérico opcional.
+   *
+   * Devolve `undefined` quando o texto não é um número plausível — antes,
+   * `parseFloat` de "abc" virava NaN e seguia para o banco, e altura ou meta
+   * negativas eram aceitas sem reclamação.
+   */
+  function numeroOpcional(texto: string, max: number): number | null | undefined {
+    if (!texto.trim()) return null;
+    const n = parseFloat(texto.replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0 || n > max) return undefined;
+    return n;
+  }
+
+  async function handleSave() {
+    if (salvando) return;
+
+    const altura = numeroOpcional(height, 300);
+    const meta = numeroOpcional(target, 500);
+    const pesagem = numeroOpcional(todayWeight, 500);
+
+    if (altura === undefined) {
+      setErroCampo('Altura inválida. Use um número em centímetros, como 178.');
+      return;
+    }
+    if (meta === undefined) {
+      setErroCampo('Peso alvo inválido. Use um número em quilos, como 75.');
+      return;
+    }
+    if (pesagem === undefined) {
+      setErroCampo('Peso de hoje inválido. Use um número em quilos, como 78.5.');
+      return;
+    }
+
+    setErroCampo(null);
+    setSalvando(true);
+    try {
+      await onSave({
+        name: name.trim() || null,
+        height_cm: altura,
+        target_weight_kg: meta,
+        today_weight_kg: pesagem,
+      });
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -541,8 +593,16 @@ function ProfileEditModal({
             placeholderTextColor={colors.text.muted}
           />
 
-          <Pressable style={styles.modalSaveBtn} onPress={handleSave}>
-            <Text style={styles.modalSaveBtnText}>Salvar</Text>
+          {erroCampo ? <Text style={styles.erroCampo}>{erroCampo}</Text> : null}
+
+          <Pressable
+            style={[styles.modalSaveBtn, salvando && styles.modalSaveBtnDesabilitado]}
+            onPress={() => void handleSave()}
+            disabled={salvando}
+          >
+            <Text style={styles.modalSaveBtnText}>
+              {salvando ? 'Salvando…' : 'Salvar'}
+            </Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -704,6 +764,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   resetBtnText: { color: colors.status.danger, fontSize: 13, fontWeight: '600' },
+  erroCampo: {
+    color: colors.status.danger,
+    fontSize: typography.size.xs,
+    marginTop: spacing.sm,
+  },
+  modalSaveBtnDesabilitado: { opacity: 0.5 },
   modalSaveBtn: {
     backgroundColor: colors.accent.base,
     borderRadius: radius.lg,

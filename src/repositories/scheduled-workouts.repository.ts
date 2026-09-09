@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 /** Linha da tabela scheduled_workouts. */
 export interface ScheduledWorkoutRow {
@@ -30,7 +31,7 @@ export const scheduledWorkoutsRepository = {
    * Retorna array vazio se a semana ainda não foi programada.
    */
   async listByWeek(
-    db: AppDatabase,
+    db: DbExecutor,
     weekStartISO: string,
   ): Promise<ScheduledWorkoutWithPlan[]> {
     return db.getAllAsync<ScheduledWorkoutWithPlan>(
@@ -48,7 +49,7 @@ export const scheduledWorkoutsRepository = {
    * Se já existe entrada pra este dia, substitui.
    */
   async scheduleWorkout(
-    db: AppDatabase,
+    db: DbExecutor,
     weekStartISO: string,
     dayOfWeek: number,
     workoutId: number,

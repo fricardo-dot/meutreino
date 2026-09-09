@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import type { DbTransaction } from '@/types/app-database';
 import { mensagemDeErro } from '@/types/errors.helpers';
 import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -190,20 +191,28 @@ export default function CalendarioScreen() {
   ) {
     if (!db || !weekStatus) return;
     try {
-      // Salva o treino escolhido neste dia.
-      await scheduledWorkoutsRepository.scheduleWorkout(
-        db,
-        weekStatus.weekStartISO,
-        dayOfWeek,
-        workoutId,
-      );
-      // Reprograma os dias SEGUINTES (que ainda não são descanso) com a
-      // sequência correta do ciclo a partir do treino escolhido.
-      await rescheduleFollowingDays(dayOfWeek, workoutId);
+      // O dia escolhido e a reprogramação dos seguintes vão numa transação só.
+      //
+      // Eram gravações separadas: falhar na quarta depois de gravar a terça
+      // deixava a semana meio reprogramada no banco, o picker aberto e a tela
+      // exibindo a programação ANTERIOR — três estados diferentes ao mesmo
+      // tempo. Ou reprograma a semana inteira, ou não mexe em nada.
+      await db.withTransactionAsync(async (tx) => {
+        await scheduledWorkoutsRepository.scheduleWorkout(
+          tx,
+          weekStatus.weekStartISO,
+          dayOfWeek,
+          workoutId,
+        );
+        await rescheduleFollowingDays(tx, dayOfWeek, workoutId);
+      });
       setSchedulePicker(null);
       await load();
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      // O picker também fecha no erro: deixá-lo aberto sobre uma tela que não
+      // mudou dava a impressão de que bastava tentar de novo ali mesmo.
+      setSchedulePicker(null);
+      setErrorMsg(mensagemDeErro(e));
     }
   }
 
@@ -211,19 +220,23 @@ export default function CalendarioScreen() {
    * Reprograma os dias seguintes da semana (dayOfWeek+1 em diante) que não
    * sejam descanso, seguindo a sequência do ciclo a partir do workoutId.
    */
-  async function rescheduleFollowingDays(fromDay: number, startWorkoutId: number) {
-    if (!db || !weekStatus) return;
-    const sequence = await trainingCycleService.getCycleSequence(db, startWorkoutId);
+  async function rescheduleFollowingDays(
+    tx: DbTransaction,
+    fromDay: number,
+    startWorkoutId: number,
+  ) {
+    if (!weekStatus) return;
+    const sequence = await trainingCycleService.getCycleSequence(tx, startWorkoutId);
     // sequence[0] = o próprio dia, sequence[1] = próximo, etc.
     for (let d = fromDay + 1; d <= 4; d++) {
       // Só reprograma dias úteis (Seg-Sex) que NÃO estão marcados como descanso.
-      const existing = await scheduledWorkoutsRepository.listByWeek(db, weekStatus.weekStartISO);
+      const existing = await scheduledWorkoutsRepository.listByWeek(tx, weekStatus.weekStartISO);
       const day = existing.find((s) => s.day_of_week === d);
       if (day && day.is_rest_day === 1) continue; // pula dias de descanso
       const seqIndex = (d - fromDay) % sequence.length;
       if (sequence[seqIndex] != null) {
         await scheduledWorkoutsRepository.scheduleWorkout(
-          db,
+          tx,
           weekStatus.weekStartISO,
           d,
           sequence[seqIndex],
