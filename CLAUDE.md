@@ -14,19 +14,33 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
 - **Dois clients, uma interface.** `client.ts` (expo-sqlite, nativo) e
   `client.web.ts` (sql.js/WASM + IndexedDB) implementam `AppDatabase`; o Metro
   resolve `.web.ts` primeiro. Método novo tem que entrar nos dois. O web é o
-  delicado: fila de escrita, SAVEPOINT para transação aninhada, persistência
-  só depois do COMMIT.
+  delicado: fila serializando as escritas feitas pela conexão, contador de
+  versão do snapshot para detectar gravação de outra aba, e persistência só
+  depois do COMMIT.
+- **Dentro de `withTransactionAsync`, todo SQL passa pelo `tx`** que o
+  callback recebe. Escrever pela conexão (`db.runAsync`) lá dentro entra na
+  fila e fica esperando a própria transação terminar — trava. O compilador não
+  pega isso: `db` continua no escopo. Transação aninhada não existe; `tx` não
+  expõe `withTransactionAsync` de propósito.
 - `execAsync` com PRAGMA ou SELECT exige `{ persist: false }` — sem isso o
   client web reexporta o banco inteiro pro IndexedDB à toa.
-- **Repositórios só persistem.** Recebem `AppDatabase`/`DbExecutor` como
-  primeiro argumento e não abrem transação. Regra de negócio e atomicidade
-  ficam em `src/services/`: `workoutEngine.saveSet` grava série + PR num único
-  `withTransactionAsync`.
+- **Repositórios só persistem.** Recebem `AppDatabase`, `DbExecutor` ou `tx`
+  como primeiro argumento. Regra de negócio e atomicidade ficam em
+  `src/services/`: `workoutEngine.saveSet` grava série + PR num único
+  `withTransactionAsync`. A exceção é `sessions.repository`, cujas duas
+  operações de criação de sessão são atômicas por natureza e abrem a própria
+  transação.
 - **Invariantes moram no schema.** Índices únicos parciais garantem no máximo
   uma sessão `em_andamento`, um PR vigente por exercício+tipo e um nome ativo
   por exercício. Não replique essas checagens em JS.
 - **Exercício não se apaga, se arquiva** (`is_active = 0`) — o histórico
   referencia o exercício.
+- **`personal_records` bloqueia exclusões.** `session_set_id` e `session_id`
+  usam `ON DELETE RESTRICT`: apagar série ou sessão exige apagar os recordes
+  ANTES, na mesma transação. Já quebrou o botão "apagar todas as séries".
+- **Import de backup nunca usa `INSERT OR REPLACE`.** REPLACE apaga a linha
+  conflitante antes de inserir e dispara as FKs — abortava a importação por
+  RESTRICT e apagava filhos por CASCADE. Use `ON CONFLICT DO UPDATE`.
 - `ensureSeedData` roda em toda inicialização e precisa continuar idempotente.
 
 ## Datas e timezone
@@ -86,7 +100,8 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 
 ## Verificação
 
-Não há teste automatizado nem lint. O portão antes de commitar é:
+Não há teste automatizado nem lint. O portão é o typecheck, rodado antes de
+commitar e também pelo CI, que não publica se ele falhar:
 
 ```bash
 npx tsc --noEmit

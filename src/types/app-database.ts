@@ -10,7 +10,8 @@
  *  - runAsync: INSERT/UPDATE/DELETE
  *  - getFirstAsync: SELECT de 1 linha
  *  - getAllAsync: SELECT de N linhas
- *  - withTransactionAsync: bloco atômico (BEGIN/COMMIT ou SAVEPOINT)
+ *  - withTransactionAsync: bloco atômico (BEGIN/COMMIT/ROLLBACK), entregando
+ *    ao callback o `tx` por onde todo o SQL do bloco deve passar
  */
 
 /** Valores que podem ser bindados em parâmetros `?`. */

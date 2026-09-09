@@ -19,8 +19,10 @@ import type {
  * Características:
  *  - WASM local em /sql-wasm.wasm (caminho sensível a EXPO_BASE_URL).
  *  - Persistência em IndexedDB — bytes do banco sobrevivem a reloads/offline.
- *  - Transações aninhadas via SAVEPOINT (nível 0 = BEGIN/COMMIT).
- *  - Fila de escrita sem deadlock: só transações de nível 0 entram na fila.
+ *  - Transações: BEGIN/COMMIT/ROLLBACK. Não há aninhamento — o callback
+ *    recebe um `tx` que não sabe abrir outra transação.
+ *  - Fila de escrita: transações E escritas pela conexão passam por ela, uma
+ *    de cada vez. Só o `tx` executa direto, por já estar dentro da transação.
  *  - Fila recuperável: erros não matam a queue.
  *  - Persistência só após COMMIT (nunca em transação, nunca em ROLLBACK).
  *  - Prepared statements sempre liberados com `.free()` (evita leak de memória).
@@ -292,13 +294,16 @@ async function getAllAsyncImpl<T>(
   }
 }
 
-// ── Transações (com SAVEPOINT) ─────────────────────────────────────────────
+// ── Transações ─────────────────────────────────────────────────────────────
 
 /**
- * Transação atômica. Nível 0: BEGIN/COMMIT/ROLLBACK na fila de escrita.
- * Aninhada (nível > 0): SAVEPOINT/RELEASE/ROLLBACK TO — roda DIRETO
- * (sem entrar na fila), evitando deadlock com a transação externa que já
- * detém a fila.
+ * Transação atômica: BEGIN IMMEDIATE / COMMIT / ROLLBACK, sempre pela fila de
+ * escrita.
+ *
+ * O callback recebe um executor ligado à transação, e é por ele que todo o SQL
+ * do bloco roda. Nada de aninhamento: esse executor não expõe
+ * `withTransactionAsync`, então o compilador impede o caso que antes virava
+ * SAVEPOINT dentro da transação alheia.
  */
 function withTransactionAsyncImpl<T>(
   state: AdapterState,
