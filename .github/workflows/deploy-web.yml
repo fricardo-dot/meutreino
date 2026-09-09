@@ -44,6 +44,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # O portão de verificação do projeto (ver CLAUDE.md). Roda ANTES do
+      # export: o Metro só transpila, não checa tipos, então sem este passo um
+      # erro de tipo era empacotado e publicado direto em produção.
+      - name: Typecheck
+        run: npx --no-install tsc --noEmit
+
       # Não existe passo "Setup Expo": o pacote `expo` está em dependencies,
       # então o `npm ci` acima já instala o CLI local. `--no-install` garante
       # que o npx use esse binário e nunca baixe um CLI da rede.
