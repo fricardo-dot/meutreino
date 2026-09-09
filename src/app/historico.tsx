@@ -32,6 +32,8 @@ export default function HistoricoScreen() {
     try {
       const list = await sessionsRepository.listRecent(db, 50);
       setSessions(list);
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {

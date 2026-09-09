@@ -54,6 +54,8 @@ export default function TreinoDetalheScreen() {
       setWorkout(w);
       setNameDraft(w?.name ?? '');
       setItems(list);
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {

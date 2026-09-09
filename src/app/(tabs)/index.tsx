@@ -116,6 +116,8 @@ export default function CalendarioScreen() {
           setShowWeekStartModal(true);
         }
       }
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {
@@ -304,15 +306,26 @@ export default function CalendarioScreen() {
   async function confirmDiscard() {
     if (!db || !activeSession) return;
     setShowDiscardConfirm(false);
-    await sessionsRepository.cancelSession(db, activeSession.id);
-    await reloadActive();
+    try {
+      await sessionsRepository.cancelSession(db, activeSession.id);
+      await reloadActive();
+    } catch (error) {
+      // O diálogo já fechou; sem isto a falha era engolida e o banner do
+      // treino em andamento continuava lá, parecendo que nada aconteceu.
+      setErrorMsg(mensagemDeErro(error));
+    }
   }
 
   async function confirmDeleteSession() {
     if (!db || !deletingSession) return;
-    await sessionsRepository.deleteSession(db, deletingSession.sessionId);
-    setDeletingSession(null);
-    void load();
+    try {
+      await sessionsRepository.deleteSession(db, deletingSession.sessionId);
+      setDeletingSession(null);
+      void load();
+    } catch (error) {
+      setDeletingSession(null);
+      setErrorMsg(mensagemDeErro(error));
+    }
   }
 
   // "Nova semana" só aparece na semana atual sem programação.

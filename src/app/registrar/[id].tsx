@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -95,6 +95,8 @@ export default function RegistrarSessaoScreen() {
         }
         setSetsByExercise(map);
       }
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {
@@ -271,6 +273,15 @@ function ExerciseBlock({
   const [lastResult, setLastResult] = useState<SaveSetResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  /**
+   * Marca que o usuário já mexeu nos campos desta série.
+   *
+   * A flag de `cancelado` do efeito só dispara no cleanup — desmontar ou
+   * trocar de exercício. Digitar não mexe em nenhuma dependência, então
+   * sozinha ela NÃO impedia a sugestão de sobrescrever o que foi digitado,
+   * que era justamente o caso que ela deveria cobrir.
+   */
+  const usuarioEditou = useRef(false);
 
   const nextSetNumber = sets.length + 1;
   const maxSets = sessionExercise.target_sets ?? 99;
@@ -287,6 +298,8 @@ function ExerciseBlock({
   // bloco desmontou ou trocou de exercício.
   useEffect(() => {
     if (!db) return;
+    // Série nova: volta a aceitar sugestão até o usuário digitar algo.
+    usuarioEditou.current = false;
     let cancelado = false;
     void (async () => {
       try {
@@ -296,7 +309,7 @@ function ExerciseBlock({
           nextSetNumber,
           sessionExercise.id,
         );
-        if (cancelado || !suggestion.hasHistory) return;
+        if (cancelado || usuarioEditou.current || !suggestion.hasHistory) return;
         setWeight(formatNumber(suggestion.weight));
         setReps(formatNumber(suggestion.reps));
         setRir(suggestion.rir !== null ? String(suggestion.rir) : '');
@@ -419,7 +432,10 @@ function ExerciseBlock({
             <StepperInput
               label="PESO"
               value={weight}
-              onChange={setWeight}
+              onChange={(v) => {
+                usuarioEditou.current = true;
+                setWeight(v);
+              }}
               suffix="kg"
               step={2.5}
               decimals={1}
@@ -429,7 +445,10 @@ function ExerciseBlock({
             <StepperInput
               label="REPS"
               value={reps}
-              onChange={setReps}
+              onChange={(v) => {
+                usuarioEditou.current = true;
+                setReps(v);
+              }}
               step={1}
               decimals={0}
               keyboardType="number-pad"
@@ -438,7 +457,10 @@ function ExerciseBlock({
             <StepperInput
               label="RIR"
               value={rir || '0'}
-              onChange={setRir}
+              onChange={(v) => {
+                usuarioEditou.current = true;
+                setRir(v);
+              }}
               step={1}
               decimals={0}
               min={0}

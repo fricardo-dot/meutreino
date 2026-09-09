@@ -80,6 +80,8 @@ export default function PerfilScreen() {
          ORDER BY e.name, pr.pr_type;`,
       );
       setPrs(prRows);
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {
@@ -177,13 +179,17 @@ export default function PerfilScreen() {
   async function confirmReset() {
     if (!db) return;
     setShowResetConfirm(false);
-    await db.execAsync(`
+    try {
+      await db.execAsync(`
       DELETE FROM personal_records;
       DELETE FROM session_sets;
       DELETE FROM session_exercises;
       DELETE FROM sessions;
     `);
-    void load();
+      void load();
+    } catch (error) {
+      setErrorMsg(mensagemDeErro(error));
+    }
   }
 
   useFocusEffect(
@@ -502,8 +508,13 @@ function ProfileEditModal({
    * negativas eram aceitas sem reclamação.
    */
   function numeroOpcional(texto: string, max: number): number | null | undefined {
-    if (!texto.trim()) return null;
-    const n = parseFloat(texto.replace(',', '.'));
+    const limpo = texto.trim().replace(',', '.');
+    if (!limpo) return null;
+    // O texto INTEIRO precisa ser um número. `parseFloat` sozinho aceita
+    // prefixo e ignora o resto: "178cm" virava 178 e "75abc" virava 75,
+    // exatamente o que esta validação promete recusar.
+    if (!/^\d+(\.\d+)?$/.test(limpo)) return undefined;
+    const n = Number(limpo);
     if (!Number.isFinite(n) || n <= 0 || n > max) return undefined;
     return n;
   }

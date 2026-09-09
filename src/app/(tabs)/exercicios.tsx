@@ -47,6 +47,7 @@ export default function ExerciciosScreen() {
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [filter, setFilter] = useState<MuscleGroup | null>(null);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
@@ -63,6 +64,8 @@ export default function ExerciciosScreen() {
         list = await exercisesRepository.listActive(db, filter ? { muscleGroup: filter } : undefined);
       }
       setExercises(list);
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {
@@ -82,8 +85,14 @@ export default function ExerciciosScreen() {
     if (!db || !pendingDelete) return;
     const exercise = pendingDelete;
     setPendingDelete(null);
-    await exercisesRepository.archive(db, exercise.id);
-    void load();
+    try {
+      await exercisesRepository.archive(db, exercise.id);
+      void load();
+    } catch (error) {
+      // O diálogo fecha antes do await, então sem isto a falha sumia e o
+      // exercício continuava na lista como se nada tivesse acontecido.
+      setActionError(mensagemDeErro(error));
+    }
   }
 
   if (loadError !== null) {
@@ -171,6 +180,16 @@ export default function ExerciciosScreen() {
           setCreating(false);
           void load();
         }}
+      />
+
+      <ConfirmDialog
+        visible={actionError !== null}
+        title="Não deu certo"
+        message={actionError ?? ''}
+        confirmText="Entendi"
+        cancelText="Fechar"
+        onConfirm={() => setActionError(null)}
+        onCancel={() => setActionError(null)}
       />
 
       <ConfirmDialog

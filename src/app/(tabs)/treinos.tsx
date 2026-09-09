@@ -28,6 +28,7 @@ export default function TreinosScreen() {
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<WorkoutRow | null>(null);
 
@@ -36,6 +37,8 @@ export default function TreinosScreen() {
     try {
       const list = await workoutsRepository.listActive(db);
       setWorkouts(list);
+      // Deu certo: se havia erro de uma tentativa anterior, ele sai.
+      setLoadError(null);
     } catch (error) {
       setLoadError(mensagemDeErro(error));
     } finally {
@@ -88,9 +91,16 @@ export default function TreinosScreen() {
 
   async function confirmDelete() {
     if (!db || !deleting) return;
-    await workoutsRepository.archive(db, deleting.id);
-    setDeleting(null);
-    void load();
+    try {
+      await workoutsRepository.archive(db, deleting.id);
+      setDeleting(null);
+      void load();
+    } catch (error) {
+      // Sem isto a falha era engolida pelo ConfirmDialog e o treino
+      // continuava na lista, dando a impressão de que a exclusão não pegou.
+      setDeleting(null);
+      setActionError(mensagemDeErro(error));
+    }
   }
 
   if (loadError !== null) {
@@ -197,6 +207,16 @@ export default function TreinosScreen() {
           </View>
         }
         contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing['5xl'] }}
+      />
+
+      <ConfirmDialog
+        visible={actionError !== null}
+        title="Não deu certo"
+        message={actionError ?? ''}
+        confirmText="Entendi"
+        cancelText="Fechar"
+        onConfirm={() => setActionError(null)}
+        onCancel={() => setActionError(null)}
       />
 
       <ConfirmDialog
