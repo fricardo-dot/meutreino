@@ -141,6 +141,35 @@ export const sessionsRepository = {
   },
 
   /**
+   * Lista sessões concluídas cujo `started_at` cai num intervalo UTC.
+   *
+   * Os limites são timestamps UTC porque é assim que CURRENT_TIMESTAMP grava.
+   * Quem chama converte a janela local que interessa e ainda filtra por data
+   * local no JS — este método só evita trazer o histórico inteiro.
+   */
+  async listConcluidasNoIntervalo(
+    db: AppDatabase,
+    fromUtc: string,
+    toUtc: string,
+  ): Promise<SessionSummary[]> {
+    return db.getAllAsync<SessionSummary>(
+      `SELECT
+         s.*,
+         COUNT(DISTINCT se.id) AS exercise_count,
+         COUNT(ss.id)          AS set_count
+       FROM sessions s
+       LEFT JOIN session_exercises se ON se.session_id = s.id
+       LEFT JOIN session_sets ss ON ss.session_exercise_id = se.id
+       WHERE s.status = 'concluida'
+         AND s.started_at >= ?
+         AND s.started_at < ?
+       GROUP BY s.id
+       ORDER BY s.started_at DESC;`,
+      [fromUtc, toUtc],
+    );
+  },
+
+  /**
    * Lista sessões concluídas (histórico) com contagens agregadas.
    */
   async listRecent(
