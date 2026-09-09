@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { WeightChart } from '@/components/WeightChart';
 import { useDatabase } from '@/hooks/useDatabase';
@@ -43,6 +45,7 @@ export default function PerfilScreen() {
   const [muscleVolume, setMuscleVolume] = useState<MuscleGroupVolume[]>([]);
   const [prs, setPrs] = useState<Array<{ exercise_name: string; pr_type: string; value: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [weightHistory, setWeightHistory] = useState<BodyWeightEntryRow[]>([]);
@@ -54,31 +57,34 @@ export default function PerfilScreen() {
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
-    const [p, w, s, mv] = await Promise.all([
-      userProfileRepository.getOrCreate(db),
-      bodyWeightRepository.getLatest(db),
-      statsService.getGeneralStats(db),
-      statsService.getVolumeByMuscleGroup(db),
-    ]);
-    setProfile(p);
-    setLatestWeight(w);
-    setStats(s);
-    setMuscleVolume(mv);
-
-    // Histórico de peso (últimos 30) para o gráfico de evolução.
-    const wh = await bodyWeightRepository.listHistory(db, 30);
-    setWeightHistory(wh);
-
-    // PRs vigentes: busca todos os is_current=1 com nome do exercício.
-    const prRows = await db.getAllAsync<{ exercise_name: string; pr_type: string; value: number }>(
-      `SELECT e.name AS exercise_name, pr.pr_type, pr.value
-       FROM personal_records pr
-       JOIN exercises e ON e.id = pr.exercise_id
-       WHERE pr.is_current = 1
-       ORDER BY e.name, pr.pr_type;`,
-    );
-    setPrs(prRows);
-    setLoading(false);
+    try {
+      const [p, w, s, mv] = await Promise.all([
+        userProfileRepository.getOrCreate(db),
+        bodyWeightRepository.getLatest(db),
+        statsService.getGeneralStats(db),
+        statsService.getVolumeByMuscleGroup(db),
+      ]);
+      setProfile(p);
+      setLatestWeight(w);
+      setStats(s);
+      setMuscleVolume(mv);
+      // Histórico de peso (últimos 30) para o gráfico de evolução.
+      const wh = await bodyWeightRepository.listHistory(db, 30);
+      setWeightHistory(wh);
+      // PRs vigentes: busca todos os is_current=1 com nome do exercício.
+      const prRows = await db.getAllAsync<{ exercise_name: string; pr_type: string; value: number }>(
+        `SELECT e.name AS exercise_name, pr.pr_type, pr.value
+         FROM personal_records pr
+         JOIN exercises e ON e.id = pr.exercise_id
+         WHERE pr.is_current = 1
+         ORDER BY e.name, pr.pr_type;`,
+      );
+      setPrs(prRows);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
+    }
   }, [db, status]);
 
   async function handleExport() {
@@ -185,6 +191,31 @@ export default function PerfilScreen() {
       void load();
     }, [load]),
   );
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (
@@ -338,7 +369,11 @@ export default function PerfilScreen() {
       <ConfirmDialog
         visible={showImportConfirm}
         title="Importar backup?"
-        message="Substituirá todos os dados atuais."
+        message={
+          'Os dados do arquivo entram por cima dos atuais: o que tiver o mesmo ' +
+          'registro é atualizado, o que for novo é criado. O que existe aqui e ' +
+          'não está no arquivo permanece.'
+        }
         confirmText="Importar"
         cancelText="Cancelar"
         destructive
