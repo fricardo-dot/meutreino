@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { workoutsRepository } from '@/repositories/workouts.repository';
@@ -25,14 +27,20 @@ export default function TreinosScreen() {
   const { db, status } = useDatabase();
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<WorkoutRow | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
-    const list = await workoutsRepository.listActive(db);
-    setWorkouts(list);
-    setLoading(false);
+    try {
+      const list = await workoutsRepository.listActive(db);
+      setWorkouts(list);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
+    }
   }, [db, status]);
 
   useEffect(() => {
@@ -84,6 +92,31 @@ export default function TreinosScreen() {
     setDeleting(null);
     void load();
   }
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (

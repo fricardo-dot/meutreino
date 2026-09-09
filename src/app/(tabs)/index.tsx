@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useDatabase } from '@/hooks/useDatabase';
@@ -49,6 +51,7 @@ export default function CalendarioScreen() {
   const [weekStatus, setWeekStatus] = useState<WeekStatus | null>(null);
   const [monthLabel, setMonthLabel] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
   // Picker de dia (programação manual de um dia específico).
@@ -79,40 +82,43 @@ export default function CalendarioScreen() {
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
-    const built = await calendarService.buildWeek(db, weekStart);
-    const ws = await calendarService.getWeekStatus(db, weekStart);
-    setDays(built);
-    setWeekStatus(ws);
-    setMonthLabel(calendarService.getMonthLabel(weekStart));
-    setLoading(false);
-
-    // Calcula continue/restart (nomes pro modal) — só interessa pra semana atual.
-    if (isCurrentWeek(weekStart)) {
-      const lastCompleted = await sessionsRepository.getLastCompleted(db);
-      const nextId = await trainingCycleService.getNextWorkoutId(
-        db,
-        lastCompleted?.workout_id ?? null,
-      );
-      setContinueWorkoutId(nextId);
-      if (nextId != null) {
-        const w = await workoutsRepository.getById(db, nextId);
-        setContinueWorkoutName(w?.name ?? null);
-      } else {
-        setContinueWorkoutName(null);
+    try {
+      const built = await calendarService.buildWeek(db, weekStart);
+      const ws = await calendarService.getWeekStatus(db, weekStart);
+      setDays(built);
+      setWeekStatus(ws);
+      setMonthLabel(calendarService.getMonthLabel(weekStart));
+      // Calcula continue/restart (nomes pro modal) — só interessa pra semana atual.
+      if (isCurrentWeek(weekStart)) {
+        const lastCompleted = await sessionsRepository.getLastCompleted(db);
+        const nextId = await trainingCycleService.getNextWorkoutId(
+          db,
+          lastCompleted?.workout_id ?? null,
+        );
+        setContinueWorkoutId(nextId);
+        if (nextId != null) {
+          const w = await workoutsRepository.getById(db, nextId);
+          setContinueWorkoutName(w?.name ?? null);
+        } else {
+          setContinueWorkoutName(null);
+        }
+        const firstId = await trainingCycleService.getFirstWorkoutId(db);
+        if (firstId != null) {
+          const w = await workoutsRepository.getById(db, firstId);
+          setRestartWorkoutName(w?.name ?? null);
+        } else {
+          setRestartWorkoutName(null);
+        }
+        // Auto-abre o modal "Nova semana" uma vez por semana sem programação.
+        if (!ws.hasSchedule && offeredWeekRef.current !== ws.weekStartISO) {
+          offeredWeekRef.current = ws.weekStartISO;
+          setShowWeekStartModal(true);
+        }
       }
-      const firstId = await trainingCycleService.getFirstWorkoutId(db);
-      if (firstId != null) {
-        const w = await workoutsRepository.getById(db, firstId);
-        setRestartWorkoutName(w?.name ?? null);
-      } else {
-        setRestartWorkoutName(null);
-      }
-
-      // Auto-abre o modal "Nova semana" uma vez por semana sem programação.
-      if (!ws.hasSchedule && offeredWeekRef.current !== ws.weekStartISO) {
-        offeredWeekRef.current = ws.weekStartISO;
-        setShowWeekStartModal(true);
-      }
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
     }
   }, [db, status, weekStart]);
 
@@ -301,6 +307,31 @@ export default function CalendarioScreen() {
     !!weekStatus &&
     !weekStatus.hasSchedule &&
     isCurrentWeek(weekStart);
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (

@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository, type SessionSummary } from '@/repositories/sessions.repository';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -23,12 +25,18 @@ export default function HistoricoScreen() {
   const { db, status } = useDatabase();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
-    const list = await sessionsRepository.listRecent(db, 50);
-    setSessions(list);
-    setLoading(false);
+    try {
+      const list = await sessionsRepository.listRecent(db, 50);
+      setSessions(list);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
+    }
   }, [db, status]);
 
   useFocusEffect(
@@ -36,6 +44,31 @@ export default function HistoricoScreen() {
       void load();
     }, [load]),
   );
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (

@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
@@ -36,6 +38,7 @@ export default function TreinoDetalheScreen() {
   const [workout, setWorkout] = useState<WorkoutRow | null>(null);
   const [items, setItems] = useState<WorkoutExerciseWithExercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -43,14 +46,19 @@ export default function TreinoDetalheScreen() {
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db || Number.isNaN(workoutId)) return;
-    const [w, list] = await Promise.all([
-      workoutsRepository.getById(db, workoutId),
-      workoutExercisesRepository.listByWorkout(db, workoutId),
-    ]);
-    setWorkout(w);
-    setNameDraft(w?.name ?? '');
-    setItems(list);
-    setLoading(false);
+    try {
+      const [w, list] = await Promise.all([
+        workoutsRepository.getById(db, workoutId),
+        workoutExercisesRepository.listByWorkout(db, workoutId),
+      ]);
+      setWorkout(w);
+      setNameDraft(w?.name ?? '');
+      setItems(list);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
+    }
   }, [db, status, workoutId]);
 
   useEffect(() => {
@@ -95,6 +103,31 @@ export default function TreinoDetalheScreen() {
       setStarting(false);
     }
   }
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (

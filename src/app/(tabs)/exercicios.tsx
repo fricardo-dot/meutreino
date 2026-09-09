@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 
+import { mensagemDeErro } from '@/types/errors.helpers';
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
@@ -44,6 +46,7 @@ export default function ExerciciosScreen() {
   const { db, status } = useDatabase();
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<MuscleGroup | null>(null);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
@@ -51,15 +54,20 @@ export default function ExerciciosScreen() {
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
-    setLoading(true);
-    let list: ExerciseRow[];
-    if (search.trim()) {
-      list = await exercisesRepository.searchByName(db, search.trim());
-    } else {
-      list = await exercisesRepository.listActive(db, filter ? { muscleGroup: filter } : undefined);
+    try {
+      setLoading(true);
+      let list: ExerciseRow[];
+      if (search.trim()) {
+        list = await exercisesRepository.searchByName(db, search.trim());
+      } else {
+        list = await exercisesRepository.listActive(db, filter ? { muscleGroup: filter } : undefined);
+      }
+      setExercises(list);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
     }
-    setExercises(list);
-    setLoading(false);
   }, [db, status, filter, search]);
 
   useEffect(() => {
@@ -76,6 +84,19 @@ export default function ExerciciosScreen() {
     setPendingDelete(null);
     await exercisesRepository.archive(db, exercise.id);
     void load();
+  }
+
+  if (loadError !== null) {
+    return (
+      <LoadErrorView
+        mensagem={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setLoading(true);
+          void load();
+        }}
+      />
+    );
   }
 
   return (
