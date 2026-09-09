@@ -70,10 +70,22 @@ export const calendarService = {
     const weekEndDate = addDays(weekStart, 7);
     const weekEndISO = toISODate(weekEndDate);
 
-    // Busca TODAS as sessões concluídas (sem filtro de data no SQL).
-    // A filtragem por data é feita no JS, convertendo UTC → local corretamente.
-    // Isso evita bugs de timezone onde treinos noturnos somem.
-    const allSessions = await sessionsRepository.listRecent(db, 100);
+    // Busca só as sessões que PODEM cair nesta semana local.
+    //
+    // O filtro fino continua sendo feito no JS logo abaixo, convertendo
+    // UTC → local — é o que evita os bugs de timezone com treino noturno. O
+    // SQL só corta o volume, com um dia de folga de cada lado para cobrir
+    // qualquer fuso.
+    //
+    // Antes isto era `listRecent(db, 100)`: o comentário dizia "busca TODAS as
+    // sessões", mas o limite de 100 fazia sumir do calendário qualquer treino
+    // mais antigo que os 100 últimos.
+    const margem = 86400000; // 1 dia
+    const allSessions = await sessionsRepository.listConcluidasNoIntervalo(
+      db,
+      toUtcTimestamp(new Date(weekStart.getTime() - margem)),
+      toUtcTimestamp(new Date(weekEndDate.getTime() + margem)),
+    );
 
     // Filtra sessões que pertencem a esta semana (em horário local).
     const sessions = allSessions.filter((s) => {
@@ -237,6 +249,14 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/**
+ * Converte um instante local para o timestamp UTC no formato do SQLite
+ * ("YYYY-MM-DD HH:MM:SS"), que é como CURRENT_TIMESTAMP grava.
+ */
+function toUtcTimestamp(date: Date): string {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /** Converte Date → "YYYY-MM-DD" (local, sem timezone). */
 function toISODate(date: Date): string {
   const y = date.getFullYear();
@@ -253,7 +273,7 @@ function toISODate(date: Date): string {
  * local, treinos noturnos (após 21h no Brasil, UTC-3) aparecem no dia
  * seguinte. Esta função converte corretamente.
  */
-function utcToLocalISODate(utcTimestamp: string): string {
+export function utcToLocalISODate(utcTimestamp: string): string {
   // O SQLite retorna "2026-07-29 00:30:00" (sem timezone info).
   // Interpretamos como UTC adicionando "Z" ou usando Date diretamente.
   const normalized = utcTimestamp.replace(' ', 'T');

@@ -1,5 +1,7 @@
 import type { AppDatabase } from '@/types/app-database';
 
+import { utcToLocalISODate } from './calendar.service';
+
 /**
  * Gera um relatório em Markdown dos treinos de um período.
  *
@@ -154,17 +156,25 @@ export async function generateWeeklyReport(
   weekStart: Date,
   weeks = 1,
 ): Promise<string> {
-  const fromISO = toISODate(weekStart) + ' 00:00:00';
   const endDate = new Date(weekStart);
   endDate.setDate(endDate.getDate() + 7 * weeks);
-  const toISO = toISODate(endDate) + ' 00:00:00';
+
+  // Os limites vão para o SQL como timestamp UTC, porque `sessions.started_at`
+  // é gravado com CURRENT_TIMESTAMP, que é UTC.
+  //
+  // Antes comparávamos a data LOCAL crua ("2026-09-08 00:00:00") com o
+  // started_at UTC. Em UTC-3 isso desloca a semana em três horas: um treino de
+  // domingo às 21h30 é gravado como segunda 00h30 UTC e caía no relatório da
+  // semana seguinte — e sumia do relatório da semana a que pertence.
+  const fromISO = toUtcTimestamp(weekStart);
+  const toISO = toUtcTimestamp(endDate);
 
   const data = await fetchReportData(db, fromISO, toISO);
 
   const lines: string[] = [];
 
   // Cabeçalho
-  lines.push(`# 📋 Relatório de Treinos — ${formatDate(fromISO.slice(0, 10))} a ${formatDate(toISODate(new Date(endDate.getTime() - 86400000)))}`);
+  lines.push(`# 📋 Relatório de Treinos — ${formatDate(toISODate(weekStart))} a ${formatDate(toISODate(new Date(endDate.getTime() - 86400000)))}`);
   lines.push('');
   lines.push(`**Treinos realizados:** ${data.sessions.length}`);
   lines.push('');
@@ -219,7 +229,9 @@ export async function generateWeeklyReport(
   lines.push('');
 
   for (const session of data.sessions) {
-    const dateStr = formatDate(session.started_at);
+    // started_at é UTC; a data exibida tem que ser a local, senão um
+    // treino noturno aparece no dia seguinte.
+    const dateStr = formatDate(utcToLocalISODate(session.started_at));
     lines.push(`### ${session.session_name} — ${dateStr}`);
     lines.push(`⏱️ Duração: ${formatDuration(session.duration_seconds)} · ${session.exercises.length} exercícios`);
     lines.push('');
@@ -246,7 +258,7 @@ export async function generateWeeklyReport(
 
   // Rodapé
   lines.push('_Relatório gerado pelo MeuTreino_');
-  lines.push(`_Período: ${formatDate(fromISO.slice(0, 10))} — ${formatDate(toISODate(new Date(endDate.getTime() - 86400000)))}_`);
+  lines.push(`_Período: ${formatDate(toISODate(weekStart))} — ${formatDate(toISODate(new Date(endDate.getTime() - 86400000)))}_`);
 
   return lines.join('\n');
 }
@@ -255,6 +267,14 @@ export async function generateWeeklyReport(
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Converte um instante local para o timestamp UTC no formato do SQLite
+ * ("YYYY-MM-DD HH:MM:SS"), que é como CURRENT_TIMESTAMP grava.
+ */
+function toUtcTimestamp(date: Date): string {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 function toISODate(date: Date): string {
