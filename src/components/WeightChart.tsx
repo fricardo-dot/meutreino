@@ -101,11 +101,18 @@ export function WeightChart({
 
   // ----- Posições X (igualmente espaçadas) -----
   const n = entries.length;
+  // Recuados de DOT_RADIUS em cada ponta: com o primeiro ponto em x=0 e o
+  // último em x=plotW, metade do círculo ficava fora da área de plotagem.
   const xFor = (i: number) =>
-    n === 1 ? plotW / 2 : (i / (n - 1)) * plotW;
+    n === 1
+      ? plotW / 2
+      : DOT_RADIUS + (i / (n - 1)) * Math.max(0, plotW - DOT_RADIUS * 2);
 
+  // x é relativo ao container de plotagem, que JÁ começa em
+  // PLOT_PADDING_X. Somar o padding de novo aqui empurrava tudo 28px pra
+  // direita e jogava o último ponto pra fora da área visível.
   const points = entries.map((e, i) => ({
-    x: PLOT_PADDING_X + xFor(i),
+    x: xFor(i),
     y: yFor(e.weight_kg),
     date: e.date,
     weight: e.weight_kg,
@@ -113,7 +120,7 @@ export function WeightChart({
 
   // ----- Segmentos de reta entre pontos consecutivos -----
   // Cada segmento é uma View rotacionada. Comprimento = distância euclidiana;
-  // ângulo = atan2(dy, dx). Originamos no ponto A e transladamos com left/top.
+  // ângulo = atan2(dy, dx). Posicionamos pelo ponto médio (ver abaixo).
   type Segment = {
     left: number;
     top: number;
@@ -130,9 +137,12 @@ export function WeightChart({
     // atan2 em graus. Compensamos metade da espessura da linha no offset pra
     // alinhar o centro do traço com o centro dos pontos.
     const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    // O transform de rotação do React Native gira em torno do CENTRO da
+    // View. Então o retângulo do traço é posicionado centrado no ponto médio
+    // de A-B: ao girar, as pontas caem exatamente sobre A e B.
     segments.push({
-      left: a.x,
-      top: a.y,
+      left: (a.x + b.x) / 2 - len / 2,
+      top: (a.y + b.y) / 2 - LINE_STROKE / 2,
       width: len,
       rotate: angleDeg,
     });
@@ -202,13 +212,10 @@ export function WeightChart({
             style={[
               styles.segment,
               {
-                left: 0,
+                left: s.left,
                 top: s.top,
                 width: s.width,
-                transform: [
-                  { rotate: `${s.rotate}deg` },
-                  { translateY: -(LINE_STROKE / 2) },
-                ],
+                transform: [{ rotate: `${s.rotate}deg` }],
               },
             ]}
           />
