@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 /**
  * Repositório de acesso à tabela `app_metadata`.
@@ -24,7 +25,7 @@ export const appMetadataRepository = {
   /**
    * Insere ou atualiza (upsert) o valor de uma chave.
    */
-  async set(db: AppDatabase, key: string, value: string): Promise<void> {
+  async set(db: DbExecutor, key: string, value: string): Promise<void> {
     await db.runAsync(
       `INSERT INTO app_metadata (key, value) VALUES (?, ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,

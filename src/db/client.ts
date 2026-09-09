@@ -1,7 +1,13 @@
 import * as SQLite from 'expo-sqlite';
 
 import { migrations, TARGET_DB_VERSION } from './migrations';
-import type { AppDatabase, ExecOptions, RunResult, SqlParameter } from '@/types/app-database';
+import type {
+  AppDatabase,
+  DbTransaction,
+  ExecOptions,
+  RunResult,
+  SqlParameter,
+} from '@/types/app-database';
 
 /**
  * Nome do arquivo do banco.
@@ -22,7 +28,7 @@ let initPromise: Promise<AppDatabase> | null = null;
  * escritas já são persistidas automaticamente pelo sistema de arquivos.
  */
 function wrapNative(db: SQLite.SQLiteDatabase): AppDatabase {
-  return {
+  const conexao: AppDatabase = {
     execAsync(sql: string, _opts?: ExecOptions): Promise<void> {
       return db.execAsync(sql);
     },
@@ -53,12 +59,20 @@ function wrapNative(db: SQLite.SQLiteDatabase): AppDatabase {
       const all = normalizeParams(params, rest);
       return db.getAllAsync<T>(sql, all);
     },
-    withTransactionAsync<T>(callback: () => Promise<T>): Promise<T> {
-      // expo-sqlite aceita callback que retorna void ou T.
-      // Como nosso tipo é Promise<T>, fazemos o cast.
-      return db.withTransactionAsync(callback as () => Promise<void>) as unknown as Promise<T>;
+    withTransactionAsync<T>(callback: (tx: DbTransaction) => Promise<T>): Promise<T> {
+      // No nativo o expo-sqlite já serializa o acesso à conexão, então o `tx`
+      // é a própria conexão — o que muda é o contrato: o callback recebe por
+      // onde deve executar, em vez de fechar sobre a conexão externa. Isso
+      // mantém os call sites idênticos nas duas plataformas.
+      //
+      // expo-sqlite aceita callback que retorna void ou T; daí o cast.
+      return db.withTransactionAsync(
+        (() => callback(conexao)) as () => Promise<void>,
+      ) as unknown as Promise<T>;
     },
   };
+
+  return conexao;
 }
 
 /**
@@ -143,17 +157,18 @@ async function runMigrations(db: AppDatabase): Promise<void> {
  * Em caso de erro, a transação é revertida e o erro é relançado com contexto,
  * preservando o stack original. O banco permanece na versão anterior.
  *
- * Observação: o callback de `withTransactionAsync` recebe a própria conexão
- * (`db`), não um objeto de transação separado — então usamos `db.execAsync`.
+ * O callback recebe `tx`, o executor ligado à transação. Todo SQL do bloco
+ * passa por ele: escrever pela conexão aqui dentro entraria na fila e ficaria
+ * esperando esta mesma transação terminar.
  */
 async function runSingleMigration(
   db: AppDatabase,
   migration: { version: number; description: string; up: string },
 ): Promise<void> {
   try {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(migration.up);
-      await db.execAsync(`PRAGMA user_version = ${migration.version};`, { persist: false });
+    await db.withTransactionAsync(async (tx) => {
+      await tx.execAsync(migration.up);
+      await tx.execAsync(`PRAGMA user_version = ${migration.version};`, { persist: false });
     });
   } catch (error) {
     throw new DatabaseInitError(

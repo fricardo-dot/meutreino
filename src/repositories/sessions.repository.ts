@@ -41,9 +41,9 @@ export const sessionsRepository = {
   ): Promise<number> {
     let createdSessionId = 0;
 
-    await db.withTransactionAsync(async () => {
+    await db.withTransactionAsync(async (tx) => {
       // Template da ficha — precisa estar dentro da transação para consistência.
-      const template = await db.getAllAsync<{
+      const template = await tx.getAllAsync<{
         id: number;
         exercise_id: number;
         sort_order: number;
@@ -65,13 +65,13 @@ export const sessionsRepository = {
       }
 
       // Nome da ficha para snapshot.
-      const workout = await db.getFirstAsync<{ name: string }>(
+      const workout = await tx.getFirstAsync<{ name: string }>(
         'SELECT name FROM workouts WHERE id = ?;',
         [workoutId],
       );
 
       // Cria a sessão.
-      const sessionResult = await db.runAsync(
+      const sessionResult = await tx.runAsync(
         `INSERT INTO sessions (workout_id, name, status)
          VALUES (?, ?, 'em_andamento');`,
         [workoutId, workout?.name ?? 'Treino avulso'],
@@ -80,7 +80,7 @@ export const sessionsRepository = {
 
       // Copia o template para session_exercises (snapshot).
       for (const item of template) {
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO session_exercises
             (session_id, exercise_id, workout_exercise_id, exercise_name, sort_order)
            VALUES (?, ?, ?, ?, ?);`,
@@ -215,8 +215,8 @@ export const sessionsRepository = {
     let createdSessionId = 0;
     const startedAt = dateISO + ' 12:00:00';
 
-    await db.withTransactionAsync(async () => {
-      const template = await db.getAllAsync<{
+    await db.withTransactionAsync(async (tx) => {
+      const template = await tx.getAllAsync<{
         id: number;
         exercise_id: number;
         sort_order: number;
@@ -237,12 +237,12 @@ export const sessionsRepository = {
         );
       }
 
-      const workout = await db.getFirstAsync<{ name: string }>(
+      const workout = await tx.getFirstAsync<{ name: string }>(
         'SELECT name FROM workouts WHERE id = ?;',
         [workoutId],
       );
 
-      const sessionResult = await db.runAsync(
+      const sessionResult = await tx.runAsync(
         `INSERT INTO sessions (workout_id, name, status, started_at, ended_at, duration_seconds)
          VALUES (?, ?, 'concluida', ?, ?, 0);`,
         [workoutId, workout?.name ?? 'Treino avulso', startedAt, startedAt],
@@ -250,7 +250,7 @@ export const sessionsRepository = {
       createdSessionId = sessionResult.lastInsertRowId as number;
 
       for (const item of template) {
-        await db.runAsync(
+        await tx.runAsync(
           `INSERT INTO session_exercises
             (session_id, exercise_id, workout_exercise_id, exercise_name, sort_order)
            VALUES (?, ?, ?, ?, ?);`,

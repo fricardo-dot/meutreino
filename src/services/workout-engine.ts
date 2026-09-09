@@ -74,9 +74,9 @@ export const workoutEngine = {
 
     let brokenPRs: PrType[] = [];
 
-    await db.withTransactionAsync(async () => {
+    await db.withTransactionAsync(async (tx) => {
       // 1. Salva a série dentro da transação e obtém o id real da linha.
-      const sessionSetId = await sessionSetsRepository.upsert(db, {
+      const sessionSetId = await sessionSetsRepository.upsert(tx, {
         session_exercise_id: input.sessionExerciseId,
         set_number: input.setNumber,
         weight: input.weight,
@@ -87,7 +87,7 @@ export const workoutEngine = {
 
       // 2-3. Lê PRs vigentes para comparar.
       const currentPRs = await personalRecordsRepository.getCurrentPRs(
-        db,
+        tx,
         input.exerciseId,
       );
 
@@ -117,7 +117,7 @@ export const workoutEngine = {
 
       // 5. Substitui os vigentes superados e insere os novos.
       await personalRecordsRepository.replaceCurrentPRs(
-        db,
+        tx,
         newRecords,
         typesToReplace,
       );
@@ -142,9 +142,9 @@ export const workoutEngine = {
     db: AppDatabase,
     sessionExerciseId: number,
   ): Promise<void> {
-    await db.withTransactionAsync(async () => {
-      await personalRecordsRepository.removeBySessionExercise(db, sessionExerciseId);
-      await sessionSetsRepository.removeAllFromSessionExercise(db, sessionExerciseId);
+    await db.withTransactionAsync(async (tx) => {
+      await personalRecordsRepository.removeBySessionExercise(tx, sessionExerciseId);
+      await sessionSetsRepository.removeAllFromSessionExercise(tx, sessionExerciseId);
     });
   },
 };

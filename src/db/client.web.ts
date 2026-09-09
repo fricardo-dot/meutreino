@@ -1,9 +1,10 @@
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 
 import { migrations, TARGET_DB_VERSION } from './migrations';
-import { loadDbBytes, saveDbBytes } from './web-storage';
+import { loadSnapshot, saveSnapshot } from './web-storage';
 import type {
   AppDatabase,
+  DbTransaction,
   ExecOptions,
   RunResult,
   SqlParameter,
@@ -67,6 +68,11 @@ interface AdapterState {
   transactionDepth: number;
   /** Se houve alteração desde a última persistência. */
   dirty: boolean;
+  /**
+   * Contador de escrita de que esta aba partiu. Vai junto em cada
+   * gravação para detectar que outra aba gravou no meio do caminho.
+   */
+  storageVersion: number;
 }
 
 /**
@@ -93,9 +99,11 @@ async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: Adapt
 
   // Restaura bytes salvos, se houver (preserva dados entre sessões).
   let database: Database;
+  let storageVersion = 0;
   try {
-    const savedBytes = await loadDbBytes();
-    database = savedBytes ? new SQL.Database(savedBytes) : new SQL.Database();
+    const snapshot = await loadSnapshot();
+    database = snapshot ? new SQL.Database(snapshot.bytes) : new SQL.Database();
+    storageVersion = snapshot ? snapshot.version : 0;
   } catch (error) {
     throw new DatabaseInitError(
       'Não foi possível acessar o armazenamento local do navegador.',
@@ -107,6 +115,7 @@ async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: Adapt
     database,
     transactionDepth: 0,
     dirty: false,
+    storageVersion,
   };
 
   const adapter = buildAdapter(state);
@@ -118,15 +127,38 @@ async function createWebDatabase(): Promise<{ adapter: AppDatabase; state: Adapt
  */
 function buildAdapter(state: AdapterState): AppDatabase {
   return {
-    execAsync: (sql, opts) => execAsyncImpl(state, sql, opts),
+    // Escritas pela CONEXÃO entram na fila: se uma transação estiver aberta,
+    // esperam ela terminar em vez de executar dentro dela.
+    execAsync: (sql, opts) =>
+      enqueueWrite(() => execDireto(state, sql, opts)),
     runAsync: (sql, params, ...rest) =>
-      runAsyncImpl(state, sql, normalizeParams(params, rest)),
+      enqueueWrite(() => runDireto(state, sql, normalizeParams(params, rest))),
+    // Leituras não entram na fila: são inofensivas e enfileirá-las travaria
+    // uma leitura feita de dentro do callback da transação.
     getFirstAsync: (sql, params, ...rest) =>
       getFirstAsyncImpl(state, sql, normalizeParams(params, rest)),
     getAllAsync: (sql, params, ...rest) =>
       getAllAsyncImpl(state, sql, normalizeParams(params, rest)),
     withTransactionAsync: (callback) =>
       withTransactionAsyncImpl(state, callback),
+  };
+}
+
+/**
+ * Executor entregue ao callback da transação.
+ *
+ * Roda DIRETO na conexão, sem passar pela fila — a transação já a detém, e
+ * enfileirar aqui seria deadlock imediato.
+ */
+function buildTransactionExecutor(state: AdapterState): DbTransaction {
+  return {
+    execAsync: (sql, opts) => execDireto(state, sql, opts),
+    runAsync: (sql, params, ...rest) =>
+      runDireto(state, sql, normalizeParams(params, rest)),
+    getFirstAsync: (sql, params, ...rest) =>
+      getFirstAsyncImpl(state, sql, normalizeParams(params, rest)),
+    getAllAsync: (sql, params, ...rest) =>
+      getAllAsyncImpl(state, sql, normalizeParams(params, rest)),
   };
 }
 
@@ -163,7 +195,7 @@ function queuePersistence(task: () => Promise<void>): Promise<void> {
 function persistDatabase(state: AdapterState): Promise<void> {
   return queuePersistence(async () => {
     const bytes = state.database.export();
-    await saveDbBytes(bytes);
+    state.storageVersion = await saveSnapshot(bytes, state.storageVersion);
   });
 }
 
@@ -183,7 +215,7 @@ function markDirty(state: AdapterState): Promise<void> {
 
 // ── Implementações dos métodos ─────────────────────────────────────────────
 
-async function execAsyncImpl(
+async function execDireto(
   state: AdapterState,
   sql: string,
   opts?: ExecOptions,
@@ -195,7 +227,7 @@ async function execAsyncImpl(
   }
 }
 
-async function runAsyncImpl(
+async function runDireto(
   state: AdapterState,
   sql: string,
   params: SqlParameter[],
@@ -270,23 +302,23 @@ async function getAllAsyncImpl<T>(
  */
 function withTransactionAsyncImpl<T>(
   state: AdapterState,
-  callback: () => Promise<T>,
+  callback: (tx: DbTransaction) => Promise<T>,
 ): Promise<T> {
-  if (state.transactionDepth > 0) {
-    return runNestedTransaction(state, callback);
-  }
+  // SEMPRE na fila. Uma transação pedida enquanto outra roda espera a vez, em
+  // vez de virar SAVEPOINT dentro da transação alheia — o que fazia a segunda
+  // responder sucesso e depois desaparecer no ROLLBACK da primeira.
   return enqueueWrite(() => runRootTransaction(state, callback));
 }
 
 async function runRootTransaction<T>(
   state: AdapterState,
-  callback: () => Promise<T>,
+  callback: (tx: DbTransaction) => Promise<T>,
 ): Promise<T> {
   state.database.run('BEGIN IMMEDIATE;');
   state.transactionDepth = 1;
 
   try {
-    const result = await callback();
+    const result = await callback(buildTransactionExecutor(state));
     state.database.run('COMMIT');
     state.transactionDepth = 0;
 
@@ -305,26 +337,6 @@ async function runRootTransaction<T>(
   }
 }
 
-async function runNestedTransaction<T>(
-  state: AdapterState,
-  callback: () => Promise<T>,
-): Promise<T> {
-  const savepoint = `app_sp_${state.transactionDepth}`;
-  state.database.run(`SAVEPOINT ${savepoint}`);
-  state.transactionDepth += 1;
-
-  try {
-    const result = await callback();
-    state.transactionDepth -= 1;
-    state.database.run(`RELEASE SAVEPOINT ${savepoint}`);
-    return result;
-  } catch (error) {
-    state.transactionDepth -= 1;
-    state.database.run(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-    state.database.run(`RELEASE SAVEPOINT ${savepoint}`);
-    throw error;
-  }
-}
 
 // ── Inicialização do schema ────────────────────────────────────────────────
 
@@ -348,9 +360,9 @@ async function initializeSchema(
 
   for (const migration of pending) {
     try {
-      await db.withTransactionAsync(async () => {
-        await db.execAsync(migration.up);
-        await db.execAsync(`PRAGMA user_version = ${migration.version};`, {
+      await db.withTransactionAsync(async (tx) => {
+        await tx.execAsync(migration.up);
+        await tx.execAsync(`PRAGMA user_version = ${migration.version};`, {
           persist: false,
         });
       });

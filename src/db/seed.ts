@@ -1,4 +1,4 @@
-import type { AppDatabase } from '@/types/app-database';
+import type { AppDatabase, DbTransaction } from '@/types/app-database';
 
 import { appMetadataRepository } from '@/repositories/app-metadata.repository';
 import { SEED_EXERCISES } from './seed-exercises';
@@ -52,11 +52,19 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
     );
   }
 
-  // 3. Fichas iniciais — só UMA vez.
+  // 3. Fichas iniciais — só UMA vez, e tudo ou nada.
+  //
+  // A transação é o que sustenta a idempotência prometida acima. Sem ela, as
+  // fichas eram inseridas uma a uma e o marcador só era gravado no fim: fechar
+  // a aba (ou uma falha de gravação) no meio deixava metade das fichas criadas
+  // e o marcador ausente — na abertura seguinte o seed rodava de novo e
+  // duplicava tudo, porque `workouts` não tem unicidade por nome.
   const workoutsSeeded = await appMetadataRepository.get(db, SEED_WORKOUTS_KEY);
   if (workoutsSeeded === null) {
-    await seedWorkouts(db);
-    await appMetadataRepository.set(db, SEED_WORKOUTS_KEY, '1');
+    await db.withTransactionAsync(async (tx) => {
+      await seedWorkouts(tx);
+      await appMetadataRepository.set(tx, SEED_WORKOUTS_KEY, '1');
+    });
   }
 }
 
@@ -66,7 +74,7 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
  * Se um exercício da ficha não existir no banco (ex: foi arquivado), ele é
  * IGNORADO — a ficha é criada sem ele. Não quebra o seed.
  */
-async function seedWorkouts(db: AppDatabase): Promise<void> {
+async function seedWorkouts(db: DbTransaction): Promise<void> {
   for (const workout of SEED_WORKOUTS) {
     // Cria a ficha.
     const result = await db.runAsync(

@@ -118,7 +118,7 @@ export const backupService = {
     const payload = parseBackup(jsonString);
     const summary: ImportSummary = {};
 
-    await db.withTransactionAsync(async () => {
+    await db.withTransactionAsync(async (tx) => {
       for (const table of BACKUP_TABLES) {
         const rows = payload.data[table];
 
@@ -195,7 +195,7 @@ export const backupService = {
                        .join(', ')};`;
           }
 
-          await db.runAsync(sql, params);
+          await tx.runAsync(sql, params);
           imported += 1;
         }
 

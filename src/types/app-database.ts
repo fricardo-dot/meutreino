@@ -75,12 +75,29 @@ export interface AppDatabase {
   ): Promise<T[]>;
 
   /**
-   * Executa o callback numa transação atômica.
+   * Executa o callback numa transação atômica (BEGIN/COMMIT/ROLLBACK).
    *
-   * - No nível 0: BEGIN/COMMIT/ROLLBACK.
-   * - Em níveis aninhados: SAVEPOINT/RELEASE/ROLLBACK TO.
+   * O callback recebe `tx`: um executor LIGADO à transação. Todo SQL do bloco
+   * tem que passar por ele.
+   *
+   * Por que o `tx` existe: no client web, escrever pela conexão (`db.runAsync`)
+   * enquanto uma transação está aberta faria a escrita entrar na transação
+   * alheia — e sumir junto com ela num ROLLBACK, mesmo tendo respondido
+   * sucesso a quem chamou. Agora a conexão serializa essas escritas numa fila
+   * (elas esperam a transação terminar) e só o `tx` executa direto lá dentro.
+   *
+   * `tx` não tem `withTransactionAsync`: transação aninhada não existe mais,
+   * e o compilador é quem garante isso.
    *
    * Se o callback lançar, a transação é desfeita e o erro propagado.
    */
-  withTransactionAsync<T>(callback: () => Promise<T>): Promise<T>;
+  withTransactionAsync<T>(callback: (tx: DbTransaction) => Promise<T>): Promise<T>;
 }
+
+/**
+ * A conexão vista de DENTRO de uma transação: tudo, menos abrir outra.
+ *
+ * É um superconjunto de `DbExecutor`, então qualquer repositório que aceite
+ * `DbExecutor` aceita um `tx`.
+ */
+export type DbTransaction = Omit<AppDatabase, 'withTransactionAsync'>;
