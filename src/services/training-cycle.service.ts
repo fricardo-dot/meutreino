@@ -45,18 +45,22 @@ export const trainingCycleService = {
       return this.getFirstWorkoutId(db);
     }
 
-    const nextOrder = last.cycle_order + 1;
-
-    // Tenta o próximo no ciclo.
+    // Próximo = menor posição MAIOR que a atual, não necessariamente +1.
+    //
+    // A sequência tem buracos com facilidade: "Remover do ciclo" zera o
+    // cycle_order de uma ficha sem reindexar as outras, e arquivar uma ficha
+    // deixa o cycle_order intacto mas com is_active = 0. Procurar exatamente
+    // `atual + 1` caía no buraco, não achava nada e voltava pro início — o
+    // ciclo travava e nunca chegava nas fichas seguintes.
     const next = await db.getFirstAsync<{ id: number }>(
       `SELECT id FROM workouts
-       WHERE is_active = 1 AND cycle_order = ?
-       ORDER BY id LIMIT 1;`,
-      [nextOrder],
+       WHERE is_active = 1 AND cycle_order > ?
+       ORDER BY cycle_order, id LIMIT 1;`,
+      [last.cycle_order],
     );
     if (next) return next.id;
 
-    // Se não há próximo, volta pro início do ciclo.
+    // Passou do fim: volta pro início do ciclo.
     return this.getFirstWorkoutId(db);
   },
 
