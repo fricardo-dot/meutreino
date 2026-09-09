@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme';
@@ -16,7 +17,16 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
-  onConfirm: () => void;
+  /**
+   * Ação confirmada. Pode ser assíncrona: enquanto a promise não resolve, os
+   * dois botões ficam desabilitados, o que impede o toque duplo disparar a
+   * operação duas vezes.
+   *
+   * Quem chama continua responsável por tratar o próprio erro e mostrar
+   * mensagem — o diálogo só garante que não haja disparo duplicado nem
+   * rejeição solta.
+   */
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -30,22 +40,51 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const [executando, setExecutando] = useState(false);
+
+  // Se o diálogo fecha (por sucesso ou por cancelamento), o bloqueio some.
+  useEffect(() => {
+    if (!visible) setExecutando(false);
+  }, [visible]);
+
+  async function confirmar() {
+    if (executando) return;
+    setExecutando(true);
+    try {
+      await onConfirm();
+    } catch (error) {
+      // Quem chama trata e exibe. Aqui só evitamos uma rejeição sem dono, que
+      // no PWA some no console e não vira nada na tela.
+      console.error('[ConfirmDialog] ação confirmada falhou:', error);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  const cancelar = executando ? () => {} : onCancel;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.overlay} onPress={onCancel}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={cancelar}>
+      <Pressable style={styles.overlay} onPress={cancelar}>
         <Pressable style={styles.dialog} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
           <View style={styles.actions}>
-            <Pressable style={styles.cancelBtn} onPress={onCancel}>
+            <Pressable
+              style={[styles.cancelBtn, executando && styles.btnDesabilitado]}
+              onPress={cancelar}
+              disabled={executando}
+            >
               <Text style={styles.cancelText}>{cancelText}</Text>
             </Pressable>
             <Pressable
               style={[
                 styles.confirmBtn,
                 destructive ? styles.confirmBtnDestructive : styles.confirmBtnNormal,
+                executando && styles.btnDesabilitado,
               ]}
-              onPress={onConfirm}
+              onPress={confirmar}
+              disabled={executando}
             >
               <Text
                 style={[
@@ -53,7 +92,7 @@ export function ConfirmDialog({
                   destructive ? styles.confirmTextDestructive : styles.confirmTextNormal,
                 ]}
               >
-                {confirmText}
+                {executando ? 'Aguarde…' : confirmText}
               </Text>
             </Pressable>
           </View>
@@ -120,6 +159,9 @@ const styles = StyleSheet.create({
   },
   confirmBtnDestructive: {
     backgroundColor: colors.status.danger,
+  },
+  btnDesabilitado: {
+    opacity: 0.5,
   },
   confirmText: {
     fontSize: 15,

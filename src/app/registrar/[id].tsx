@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { StepperInput } from '@/components/StepperInput';
 import { useRestTimer } from '@/hooks/useRestTimer';
@@ -20,6 +21,7 @@ import { sessionsRepository } from '@/repositories/sessions.repository';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
+import { mensagemDeErro } from '@/types/errors.helpers';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
 
@@ -66,31 +68,38 @@ export default function RegistrarSessaoScreen() {
   const [exercises, setExercises] = useState<SessionExerciseWithPlan[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<number, SessionSetRow[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db || Number.isNaN(sessionId)) return;
-    const s = await sessionsRepository.getById(db, sessionId);
-    setSession(s);
-    if (s) {
-      const exs = await db.getAllAsync<SessionExerciseWithPlan>(
-        `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
-         FROM session_exercises se
-         LEFT JOIN workout_exercises we ON we.id = se.workout_exercise_id
-         LEFT JOIN exercises e ON e.id = se.exercise_id
-         WHERE se.session_id = ?
-         ORDER BY se.sort_order;`,
-        [sessionId],
-      );
-      setExercises(exs);
-      const map: Record<number, SessionSetRow[]> = {};
-      for (const ex of exs) {
-        map[ex.id] = await sessionSetsRepository.listBySessionExercise(db, ex.id);
+    try {
+      const s = await sessionsRepository.getById(db, sessionId);
+      setSession(s);
+      if (s) {
+        const exs = await db.getAllAsync<SessionExerciseWithPlan>(
+          `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
+           FROM session_exercises se
+           LEFT JOIN workout_exercises we ON we.id = se.workout_exercise_id
+           LEFT JOIN exercises e ON e.id = se.exercise_id
+           WHERE se.session_id = ?
+           ORDER BY se.sort_order;`,
+          [sessionId],
+        );
+        setExercises(exs);
+        const map: Record<number, SessionSetRow[]> = {};
+        for (const ex of exs) {
+          map[ex.id] = await sessionSetsRepository.listBySessionExercise(db, ex.id);
+        }
+        setSetsByExercise(map);
       }
-      setSetsByExercise(map);
+    } catch (error) {
+      setLoadError(mensagemDeErro(error));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [db, status, sessionId]);
 
   useEffect(() => {
@@ -104,10 +113,45 @@ export default function RegistrarSessaoScreen() {
   async function confirmComplete() {
     if (!db || !session) return;
     setCompleting(true);
-    await sessionsRepository.completeSession(db, session.id);
-    setCompleting(false);
-    router.replace('/historico');
+    try {
+      await sessionsRepository.completeSession(db, session.id);
+      setShowCompleteConfirm(false);
+      router.replace('/historico');
+    } catch (error) {
+      // Sem este catch, uma falha de gravação (StaleDatabaseError, por
+      // exemplo) deixava `completing` em true para sempre: o botão ficava
+      // preso em "Concluindo…" e o diálogo aberto, sem dizer nada.
+      setShowCompleteConfirm(false);
+      setErrorMsg(mensagemDeErro(error));
+    } finally {
+      setCompleting(false);
+    }
   }
+
+  if (loadError !== null) {
+
+    return (
+
+      <LoadErrorView
+
+        mensagem={loadError}
+
+        onRetry={() => {
+
+          setLoadError(null);
+
+          setLoading(true);
+
+          void load();
+
+        }}
+
+      />
+
+    );
+
+  }
+
 
   if (loading) {
     return (
@@ -156,6 +200,7 @@ export default function RegistrarSessaoScreen() {
             sessionId={session.id}
             sets={setsByExercise[item.id] ?? []}
             onSaved={() => void load()}
+            onError={setErrorMsg}
           />
         )}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
@@ -180,6 +225,16 @@ export default function RegistrarSessaoScreen() {
       </View>
 
       <ConfirmDialog
+        visible={errorMsg !== null}
+        title="Não deu para salvar"
+        message={errorMsg ?? ''}
+        confirmText="Entendi"
+        cancelText="Fechar"
+        onConfirm={() => setErrorMsg(null)}
+        onCancel={() => setErrorMsg(null)}
+      />
+
+      <ConfirmDialog
         visible={showCompleteConfirm}
         title="Concluir treino?"
         message="A sessão será finalizada e vai para o histórico."
@@ -199,11 +254,14 @@ function ExerciseBlock({
   sessionId,
   sets,
   onSaved,
+  onError,
 }: {
   sessionExercise: SessionExerciseWithPlan;
   sessionId: number;
   sets: SessionSetRow[];
   onSaved: () => void;
+  /** Reporta falha ao pai, que é quem tem o diálogo de mensagem. */
+  onError: (mensagem: string) => void;
 }) {
   const { db } = useDatabase();
   const restTimer = useRestTimer();
@@ -260,6 +318,11 @@ function ExerciseBlock({
       setLastResult(result);
       if (result.restEndsAt) restTimer.start(result.restEndsAt);
       onSaved();
+    } catch (error) {
+      // Era um try/finally sem catch: a série não era salva, o botão voltava
+      // ao normal e NADA aparecia. Quem perdesse a série por conflito entre
+      // abas não tinha como saber, nem que era só recarregar.
+      onError(mensagemDeErro(error));
     } finally {
       setSaving(false);
     }
@@ -280,13 +343,19 @@ function ExerciseBlock({
 
   async function confirmReset() {
     if (!db) return;
-    await workoutEngine.resetSessionExerciseSets(db, sessionExercise.id);
-    setWeight('0');
-    setReps('0');
-    setRir('');
-    setLastResult(null);
-    setShowResetConfirm(false);
-    onSaved();
+    try {
+      await workoutEngine.resetSessionExerciseSets(db, sessionExercise.id);
+      setWeight('0');
+      setReps('0');
+      setRir('');
+      setLastResult(null);
+      setShowResetConfirm(false);
+      onSaved();
+    } catch (error) {
+      setShowResetConfirm(false);
+      onError(mensagemDeErro(error));
+      return;
+    }
   }
 
   return (
