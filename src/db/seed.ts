@@ -77,8 +77,11 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
 async function seedWorkouts(db: DbTransaction): Promise<void> {
   for (const workout of SEED_WORKOUTS) {
     // Cria a ficha.
+    // A ficha nasce no pacote ativo, criado pela migration v9. Sem o pack_id
+    // ela ficaria órfã e não apareceria em tela nenhuma.
     const result = await db.runAsync(
-      `INSERT INTO workouts (name, division, cycle_order) VALUES (?, ?, ?);`,
+      `INSERT INTO workouts (name, division, cycle_order, pack_id)
+       VALUES (?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
       [workout.name, workout.division, workout.cycle_order ?? null],
     );
     const workoutId = result.lastInsertRowId as number;

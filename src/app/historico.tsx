@@ -48,27 +48,16 @@ export default function HistoricoScreen() {
   );
 
   if (loadError !== null) {
-
     return (
-
       <LoadErrorView
-
         mensagem={loadError}
-
         onRetry={() => {
-
           setLoadError(null);
-
           setLoading(true);
-
           void load();
-
         }}
-
       />
-
     );
-
   }
 
 

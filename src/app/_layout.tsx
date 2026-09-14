@@ -53,6 +53,7 @@ function RootNavigator() {
       <Stack.Screen name="treino/[id]" />
       <Stack.Screen name="registrar/[id]" />
       <Stack.Screen name="historico" />
+      <Stack.Screen name="pacotes" />
     </Stack>
   );
 }

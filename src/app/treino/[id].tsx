@@ -107,27 +107,16 @@ export default function TreinoDetalheScreen() {
   }
 
   if (loadError !== null) {
-
     return (
-
       <LoadErrorView
-
         mensagem={loadError}
-
         onRetry={() => {
-
           setLoadError(null);
-
           setLoading(true);
-
           void load();
-
         }}
-
       />
-
     );
-
   }
 
 

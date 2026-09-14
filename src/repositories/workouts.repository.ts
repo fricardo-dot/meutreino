@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 import type { WorkoutInput, WorkoutRow } from '@/types/db';
 
@@ -10,12 +11,17 @@ import type { WorkoutInput, WorkoutRow } from '@/types/db';
  */
 export const workoutsRepository = {
   /**
-   * Lista fichas ativas, ordenadas por cycle_order (NULLs por último, alfabético).
+   * Lista as fichas ativas DO PACOTE ATIVO, ordenadas por cycle_order
+   * (NULLs por último, alfabético).
+   *
+   * O recorte por pacote é o que faz arquivar um mesociclo sumir com as fichas
+   * dele de toda a UI de uma vez, sem tocar no histórico de sessões.
    */
-  async listActive(db: AppDatabase): Promise<WorkoutRow[]> {
+  async listActive(db: DbExecutor): Promise<WorkoutRow[]> {
     return db.getAllAsync<WorkoutRow>(
       `SELECT * FROM workouts
        WHERE is_active = 1
+         AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
        ORDER BY
          CASE WHEN cycle_order IS NULL THEN 1 ELSE 0 END,
          cycle_order NULLS LAST,
@@ -37,10 +43,12 @@ export const workoutsRepository = {
   /**
    * Cria uma ficha. Retorna o novo id.
    */
-  async create(db: AppDatabase, input: WorkoutInput): Promise<number> {
+  async create(db: DbExecutor, input: WorkoutInput): Promise<number> {
+    // Ficha nova nasce no pacote ativo. Sem isto ela ficaria órfã e não
+    // apareceria em lugar nenhum.
     const result = await db.runAsync(
-      `INSERT INTO workouts (name, division, notes, cycle_order)
-       VALUES (?, ?, ?, ?);`,
+      `INSERT INTO workouts (name, division, notes, cycle_order, pack_id)
+       VALUES (?, ?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
       [
         input.name,
         input.division ?? null,
@@ -54,10 +62,11 @@ export const workoutsRepository = {
   /**
    * Lista workouts que participam do ciclo (cycle_order NOT NULL), ordenados.
    */
-  async listCycleWorkouts(db: AppDatabase): Promise<WorkoutRow[]> {
+  async listCycleWorkouts(db: DbExecutor): Promise<WorkoutRow[]> {
     return db.getAllAsync<WorkoutRow>(
       `SELECT * FROM workouts
        WHERE is_active = 1 AND cycle_order IS NOT NULL
+         AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
        ORDER BY cycle_order;`,
     );
   },

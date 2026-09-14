@@ -131,27 +131,16 @@ export default function RegistrarSessaoScreen() {
   }
 
   if (loadError !== null) {
-
     return (
-
       <LoadErrorView
-
         mensagem={loadError}
-
         onRetry={() => {
-
           setLoadError(null);
-
           setLoading(true);
-
           void load();
-
         }}
-
       />
-
     );
-
   }
 
 

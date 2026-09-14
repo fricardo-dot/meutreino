@@ -77,8 +77,26 @@ export interface WorkoutRow {
   notes: string | null;
   is_active: number; // 0 | 1
   cycle_order: number | null; // posição no ciclo; NULL = não participa
+  /** Pacote a que a ficha pertence. NULL só existiria em banco pré-v9. */
+  pack_id: number | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Pacote de treino (mesociclo): o conjunto de fichas seguido num período.
+ *
+ * Exatamente um fica ativo; os demais são o histórico de ciclos passados,
+ * consultáveis e reativáveis.
+ */
+export interface WorkoutPackRow {
+  id: number;
+  name: string;
+  notes: string | null;
+  is_active: number; // 0 | 1
+  created_at: string;
+  /** Quando saiu de uso. NULL enquanto ativo. */
+  archived_at: string | null;
 }
 
 export interface WorkoutInput {

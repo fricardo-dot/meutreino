@@ -39,6 +39,12 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
   por exercício. Não replique essas checagens em JS.
 - **Exercício não se apaga, se arquiva** (`is_active = 0`) — o histórico
   referencia o exercício.
+- **Ficha pertence a um pacote** (`workouts.pack_id`), e existe exatamente UM
+  pacote ativo — índice único parcial garante que não haja dois, e o app nunca
+  arquiva um sem colocar outro no lugar. Toda consulta de ficha para a UI
+  precisa filtrar pelo pacote ativo; esquecer disso faz o mesociclo arquivado
+  reaparecer misturado ao atual. Pacote também não se apaga, se arquiva:
+  `pack_id` é ON DELETE RESTRICT porque as fichas dele sustentam o histórico.
 - **`personal_records` bloqueia exclusões.** `session_set_id` e `session_id`
   usam `ON DELETE RESTRICT`: apagar série ou sessão exige apagar os recordes
   ANTES, na mesma transação. Já quebrou o botão "apagar todas as séries".

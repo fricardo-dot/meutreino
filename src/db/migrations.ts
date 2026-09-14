@@ -1,4 +1,4 @@
-import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8 } from './schema';
+import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8, SQL_MIGRATION_V9 } from './schema';
 
 /**
  * Migrations versionadas do banco de dados.
@@ -74,6 +74,13 @@ export const migrations: Migration[] = [
     description:
       'Cria tabela scheduled_workouts (programação semanal: qual treino em cada dia).',
     up: SQL_MIGRATION_V8,
+  },
+  {
+    version: 9,
+    description:
+      'Cria workout_packs (pacotes de treino / mesociclos) e a coluna ' +
+      'workouts.pack_id, adotando as fichas existentes num pacote inicial.',
+    up: SQL_MIGRATION_V9,
   },
 ];
 

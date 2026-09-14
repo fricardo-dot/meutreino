@@ -56,6 +56,7 @@ export const trainingCycleService = {
     const next = await db.getFirstAsync<{ id: number }>(
       `SELECT id FROM workouts
        WHERE is_active = 1 AND cycle_order > ?
+         AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
        ORDER BY cycle_order, id LIMIT 1;`,
       [last.cycle_order],
     );
@@ -73,6 +74,7 @@ export const trainingCycleService = {
     const first = await db.getFirstAsync<{ id: number }>(
       `SELECT id FROM workouts
        WHERE is_active = 1 AND cycle_order IS NOT NULL
+         AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
        ORDER BY cycle_order LIMIT 1;`,
     );
     return first?.id ?? null;
@@ -85,6 +87,7 @@ export const trainingCycleService = {
     return db.getAllAsync<WorkoutRow>(
       `SELECT * FROM workouts
        WHERE is_active = 1 AND cycle_order IS NOT NULL
+         AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
        ORDER BY cycle_order;`,
     );
   },

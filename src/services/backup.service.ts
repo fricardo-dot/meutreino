@@ -19,6 +19,9 @@ export const BACKUP_FORMAT_VERSION = 1;
  */
 export const BACKUP_TABLES = [
   'exercises',
+  // `workout_packs` vem ANTES de `workouts`: a ficha referencia o pacote, e a
+  // importação insere na ordem desta lista justamente para o pai existir.
+  'workout_packs',
   'workouts',
   'workout_exercises',
   'sessions',
@@ -57,8 +60,8 @@ export type ImportSummary = Partial<Record<BackupTableName, number>>;
  *
  * Caso de uso: o usuário troca de aparelho ou reinstala e precisa restaurar
  * treinos, histórico, recordes e perfil. A exportação serializa tudo num JSON;
- * a importação faz upsert (`INSERT OR REPLACE`) dentro de uma transação, de
- * modo que a restauração seja atômica (tudo ou nada).
+ * a importação faz upsert (`ON CONFLICT DO UPDATE`) dentro de uma transação,
+ * de modo que a restauração seja atômica (tudo ou nada).
  *
  * Compatibilidade (frente e verso):
  *  - Tabelas ausentes do JSON são puladas (backup antigo restaurando em DB novo).
@@ -100,8 +103,9 @@ export const backupService = {
    *
    * - Tudo dentro de UMA transação (`withTransactionAsync`): ou tudo entra,
    *   ou nada (rollback em caso de erro).
-   * - Usa `INSERT OR REPLACE` (upsert): linhas existentes com o mesmo id são
-   *   sobrescritas; os IDs originais são preservados.
+   * - Usa UPSERT (`ON CONFLICT DO UPDATE`): linha existente com o mesmo id é
+   *   atualizada no lugar, sem DELETE e sem disparar cascata. Os ids originais
+   *   são preservados.
    * - As tabelas são inseridas na ordem de {@link BACKUP_TABLES} (pais antes
    *   de filhos) para satisfazer as FKs.
    * - Para cada tabela, consulta `PRAGMA table_info` para descobrir as colunas

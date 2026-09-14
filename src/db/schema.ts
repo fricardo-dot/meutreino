@@ -373,3 +373,50 @@ export const SQL_MIGRATION_V8 = /* sql */ `
 
   CREATE INDEX IF NOT EXISTS idx_scheduled_week ON scheduled_workouts(week_start_date);
 `;
+
+/**
+ * v9 — Pacotes de treino (mesociclos).
+ *
+ * Um "pacote" é o conjunto de fichas que você está seguindo num período. Ao
+ * mudar de ciclo, o pacote inteiro é arquivado de uma vez e outro entra no
+ * lugar — em vez de apagar ou renomear ficha por ficha.
+ *
+ * Regras incorporadas:
+ *  - No máximo UM pacote ativo (índice único parcial, mesmo padrão da sessão
+ *    em andamento). O app nunca arquiva sem colocar outro no lugar, então na
+ *    prática é sempre exatamente um.
+ *  - `workouts.pack_id` diz a que pacote a ficha pertence. É ON DELETE
+ *    RESTRICT porque pacote não se apaga, se arquiva — e o histórico de
+ *    sessões referencia as fichas dele.
+ *  - A migration cria o pacote inicial e adota as fichas que já existem, para
+ *    que um banco em uso não fique com ficha órfã.
+ *
+ * `archived_at` guarda quando saiu de uso; NULL enquanto ativo.
+ */
+export const SQL_MIGRATION_V9 = /* sql */ `
+  CREATE TABLE IF NOT EXISTS workout_packs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name        TEXT NOT NULL,
+    notes       TEXT,
+    is_active   INTEGER NOT NULL DEFAULT 0 CHECK(is_active IN (0, 1)),
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    archived_at TEXT
+  );
+
+  -- ⭐ No máximo UM pacote ativo por banco.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_single_active_pack
+    ON workout_packs(is_active) WHERE is_active = 1;
+
+  ALTER TABLE workouts ADD COLUMN pack_id INTEGER
+    REFERENCES workout_packs(id) ON DELETE RESTRICT;
+
+  CREATE INDEX IF NOT EXISTS idx_workouts_pack ON workouts(pack_id);
+
+  -- Pacote inicial: adota tudo que já existe, inclusive ficha arquivada, para
+  -- não deixar órfã. Em banco novo a tabela está vazia e isto não faz nada.
+  INSERT INTO workout_packs (name, is_active) VALUES ('Meu treino', 1);
+
+  UPDATE workouts
+     SET pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
+   WHERE pack_id IS NULL;
+`;

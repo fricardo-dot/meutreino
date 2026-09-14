@@ -13,6 +13,7 @@ import { mensagemDeErro } from '@/types/errors.helpers';
 import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
+import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { WorkoutRow } from '@/types/db';
@@ -29,12 +30,15 @@ export default function TreinosScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [packName, setPackName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<WorkoutRow | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
     try {
+      const pack = await workoutPacksRepository.getActive(db);
+      setPackName(pack?.name ?? null);
       const list = await workoutsRepository.listActive(db);
       setWorkouts(list);
       // Deu certo: se havia erro de uma tentativa anterior, ele sai.
@@ -104,27 +108,16 @@ export default function TreinosScreen() {
   }
 
   if (loadError !== null) {
-
     return (
-
       <LoadErrorView
-
         mensagem={loadError}
-
         onRetry={() => {
-
           setLoadError(null);
-
           setLoading(true);
-
           void load();
-
         }}
-
       />
-
     );
-
   }
 
 
@@ -144,6 +137,15 @@ export default function TreinosScreen() {
           <Text style={styles.newButtonText}>{creating ? '...' : '+ Novo'}</Text>
         </Pressable>
       </View>
+
+      {/* Qual pacote está em uso, e a porta para arquivar / trocar. */}
+      <Pressable style={styles.packRow} onPress={() => router.push('/pacotes')}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.packLabel}>PACOTE EM USO</Text>
+          <Text style={styles.packName}>{packName ?? '—'}</Text>
+        </View>
+        <Text style={styles.packLink}>Trocar ›</Text>
+      </Pressable>
 
       <FlatList
         data={workouts}
@@ -292,6 +294,31 @@ const styles = StyleSheet.create({
   },
   moveBtnDisabled: { opacity: 0.3 },
   moveIcon: { color: colors.accent.base, fontSize: typography.size.md, fontWeight: '700' },
+  packRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.background.surface,
+    borderWidth: 1,
+    borderColor: colors.background.border,
+    borderRadius: radius.lg,
+  },
+  packLabel: {
+    color: colors.text.muted,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  packName: {
+    color: colors.text.primary,
+    fontSize: typography.size.md,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  packLink: { color: colors.accent.base, fontSize: 13, fontWeight: '600' },
   cardTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
   cardSub: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs },
   empty: { alignItems: 'center', paddingTop: 64, paddingHorizontal: spacing['3xl'] },
