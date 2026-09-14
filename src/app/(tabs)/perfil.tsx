@@ -19,10 +19,10 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { WeightChart } from '@/components/WeightChart';
 import { useDatabase } from '@/hooks/useDatabase';
 import { bodyWeightRepository } from '@/repositories/body-weight.repository';
+import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
 import { userProfileRepository } from '@/repositories/user-profile.repository';
 import { backupService } from '@/services/backup.service';
-import { calendarService } from '@/services/calendar.service';
-import { generateWeeklyReport } from '@/services/report.service';
+import { generatePackReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { BodyWeightEntryRow, UserProfileRow } from '@/types/db';
@@ -114,8 +114,13 @@ export default function PerfilScreen() {
     if (!db) return;
     setGeneratingReport(true);
     try {
-      const weekStart = calendarService.getWeekStart(new Date());
-      const markdown = await generateWeeklyReport(db, weekStart, 1);
+      // O relatório é do BLOCO em uso, não da semana: progressão só existe
+      // comparando semanas, e o pacote é o que delimita o programa atual.
+      const pacote = await workoutPacksRepository.getActive(db);
+      if (!pacote) {
+        throw new Error('Nenhum pacote em uso. Abra Treinos → Pacotes.');
+      }
+      const markdown = await generatePackReport(db, pacote);
 
       if (Platform.OS === 'web') {
         // Na web: copia pra área de transferência + baixa arquivo.
@@ -129,10 +134,10 @@ export default function PerfilScreen() {
         const a = document.createElement('a');
         a.href = url;
         const today = new Date().toISOString().slice(0, 10);
-        a.download = `meutreino-relatorio-${today}.md`;
+        a.download = `meutreino-bloco-${today}.md`;
         a.click();
         URL.revokeObjectURL(url);
-        setErrorMsg('Relatório gerado! Arquivo baixado e copiado pra área de transferência.');
+        setErrorMsg('Relatório do bloco gerado! Arquivo baixado e copiado pra área de transferência.');
       } else {
         setErrorMsg('Relatório disponível apenas na versão web por enquanto.');
       }
@@ -324,11 +329,12 @@ export default function PerfilScreen() {
         </>
       ) : null}
 
-      {/* Relatório da semana em Markdown */}
-      <SectionTitle>Relatório da semana</SectionTitle>
+      {/* Relatório do bloco em Markdown */}
+      <SectionTitle>Relatório do bloco</SectionTitle>
       <Text style={styles.reportHint}>
-        Gera um resumo dos treinos da semana em texto formatado (Markdown)
-        pra você enviar à sua IA e receber feedback.
+        Gera o relatório do pacote em uso, do começo do bloco até hoje, com a
+        evolução semana a semana e a progressão de carga por exercício. Sai em
+        Markdown, pra você enviar à sua IA e receber feedback.
       </Text>
       <Pressable
         style={[styles.exportBtn, generatingReport && { opacity: 0.5 }]}
