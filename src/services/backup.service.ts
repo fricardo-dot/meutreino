@@ -72,7 +72,40 @@ export type ImportSummary = Partial<Record<BackupTableName, number>>;
  *  - Colunas ausentes do DB alvo são puladas (backup novo restaurando em DB antigo).
  *  - Tabelas do JSON inexistentes no DB são puladas com aviso.
  */
+/** O que um arquivo de backup contem, lido sem importar nada. */
+export interface BackupInfo {
+  /** Quando foi gerado (ISO, UTC). */
+  exportedAt: string;
+  /** Quantas linhas por tabela. */
+  linhas: Partial<Record<BackupTableName, number>>;
+  /** Total de linhas do arquivo. */
+  total: number;
+}
+
 export const backupService = {
+  /**
+   * Lê o cabeçalho de um backup SEM aplicar nada.
+   *
+   * Existe para a confirmação poder dizer de QUANDO é o arquivo. Sem isso, a
+   * pergunta "importar?" é feita às cegas: num fluxo de dois aparelhos, o
+   * risco não é perder dado (a importação mescla, não substitui) e sim
+   * mesclar o arquivo errado e não perceber.
+   *
+   * @throws pelas mesmas validações da importação — formato inválido é
+   *         recusado aqui, antes de qualquer escrita.
+   */
+  descrever(json: string): BackupInfo {
+    const payload = parseBackup(json);
+    const linhas: Partial<Record<BackupTableName, number>> = {};
+    let total = 0;
+    for (const [tabela, rows] of Object.entries(payload.data)) {
+      if (!Array.isArray(rows)) continue;
+      linhas[tabela as BackupTableName] = rows.length;
+      total += rows.length;
+    }
+    return { exportedAt: payload.exportedAt, linhas, total };
+  },
+
   /**
    * Exporta TODAS as tabelas do app num JSON.
    *

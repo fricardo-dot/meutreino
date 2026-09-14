@@ -21,7 +21,8 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { bodyWeightRepository } from '@/repositories/body-weight.repository';
 import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
 import { userProfileRepository } from '@/repositories/user-profile.repository';
-import { backupService } from '@/services/backup.service';
+import { backupService, type BackupInfo, type ImportSummary }
+  from '@/services/backup.service';
 import { generatePackReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -51,6 +52,8 @@ export default function PerfilScreen() {
   const [weightHistory, setWeightHistory] = useState<BodyWeightEntryRow[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importData, setImportData] = useState<string | null>(null);
+  /** Cabeçalho do arquivo escolhido, para a confirmação não ser às cegas. */
+  const [importInfo, setImportInfo] = useState<BackupInfo | null>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [importSummaryMsg, setImportSummaryMsg] = useState<string | null>(null);
@@ -97,14 +100,33 @@ export default function PerfilScreen() {
     }
     try {
       const json = await backupService.exportData(db);
-      // Create a blob and download it (works on web)
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const nome = `meutreino-backup-${dataLocalISO()}.json`;
+      const arquivo = new File([json], nome, { type: 'application/json' });
+
+      // No celular, baixar não serve: num PWA em standalone (iOS
+      // principalmente) o clique num link de blob não abre nada e falha
+      // calado. Compartilhar é o caminho que existe lá — cai no Arquivos, no
+      // Drive, no WhatsApp, onde o usuário quiser.
+      if (navigator.canShare?.({ files: [arquivo] })) {
+        try {
+          await navigator.share({ files: [arquivo], title: nome });
+          setErrorMsg(`Backup ${nome} enviado.`);
+          return;
+        } catch (erro) {
+          // Cancelar o menu de compartilhamento não é falha: o usuário
+          // desistiu, e cair no download seria baixar o que ele recusou.
+          if (erro instanceof DOMException && erro.name === 'AbortError') return;
+          // Qualquer outro erro: segue para o download.
+        }
+      }
+
+      const url = URL.createObjectURL(arquivo);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `meutreino-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = nome;
       a.click();
       URL.revokeObjectURL(url);
+      setErrorMsg(`Backup salvo como ${nome}.`);
     } catch (error) {
       setErrorMsg(`Erro ao exportar: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -160,6 +182,14 @@ export default function PerfilScreen() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const text = await file.text();
+      try {
+        // Lê o cabeçalho ANTES de perguntar: assim a confirmação diz de quando
+        // é o arquivo, e um JSON inválido é recusado sem nem abrir o diálogo.
+        setImportInfo(backupService.descrever(text));
+      } catch (error) {
+        setErrorMsg(`Arquivo inválido: ${mensagemDeErro(error)}`);
+        return;
+      }
       setImportData(text);
       setShowImportConfirm(true);
     };
@@ -171,9 +201,9 @@ export default function PerfilScreen() {
     setShowImportConfirm(false);
     try {
       const summary = await backupService.importData(db, importData);
-      const total = Object.values(summary).reduce((acc, n) => acc + (n ?? 0), 0);
       setImportData(null);
-      setImportSummaryMsg(`Importação concluída: ${total} registro(s) restaurado(s).`);
+      setImportInfo(null);
+      setImportSummaryMsg(resumoLegivel(summary));
       void load();
     } catch (error) {
       setImportData(null);
@@ -348,6 +378,12 @@ export default function PerfilScreen() {
 
       {/* Backup dos dados */}
       <SectionTitle>Backup dos dados</SectionTitle>
+      <Text style={styles.reportHint}>
+        É assim que se leva o treino de um aparelho para outro: exporte aqui e
+        importe no outro. Exporte SEMPRE do aparelho usado por último — na
+        importação o arquivo vence, e um treino registrado só no outro aparelho
+        pode ser sobrescrito.
+      </Text>
       <View style={styles.backupRow}>
         <Pressable style={styles.exportBtn} onPress={handleExport}>
           <Text style={styles.exportBtnText}>Exportar</Text>
@@ -371,9 +407,13 @@ export default function PerfilScreen() {
         visible={showImportConfirm}
         title="Importar backup?"
         message={
-          'Os dados do arquivo entram por cima dos atuais: o que tiver o mesmo ' +
-          'registro é atualizado, o que for novo é criado. O que existe aqui e ' +
-          'não está no arquivo permanece.'
+          (importInfo
+            ? `Arquivo de ${dataHoraLegivel(importInfo.exportedAt)}, com ` +
+              `${importInfo.total} registro(s).\n\n`
+            : '') +
+          'Os dados do arquivo entram por cima dos atuais. O que for novo é ' +
+          'criado; o que ocupar a mesma posição é substituído pelo do arquivo, ' +
+          'mesmo que aqui seja outro treino.'
         }
         confirmText="Importar"
         cancelText="Cancelar"
@@ -382,6 +422,7 @@ export default function PerfilScreen() {
         onCancel={() => {
           setShowImportConfirm(false);
           setImportData(null);
+          setImportInfo(null);
         }}
       />
       <ConfirmDialog
@@ -664,6 +705,65 @@ function formatPR(type: string, value: number): string {
 }
 
 // ── Estilos ────────────────────────────────────────────────────────────────
+
+/**
+ * Data de HOJE em local, no formato YYYY-MM-DD.
+ *
+ * `toISOString().slice(0, 10)` devolve a data UTC: exportar às 21h30 no Brasil
+ * nomeava o arquivo com o dia seguinte. Num fluxo de dois aparelhos, em que a
+ * data do nome é o que diz qual backup é o mais novo, isso confunde de verdade.
+ */
+function dataLocalISO(): string {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+/** "12/09/2026 às 21:30" a partir do ISO gravado no backup. */
+function dataHoraLegivel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'data desconhecida';
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const hora = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dia}/${mes}/${d.getFullYear()} às ${hora}:${min}`;
+}
+
+/** Nome de cada tabela como o usuário a conhece. */
+const NOMES_DAS_TABELAS: Record<string, string> = {
+  exercises: 'exercícios',
+  workout_packs: 'pacotes',
+  workouts: 'fichas',
+  workout_exercises: 'exercícios das fichas',
+  sessions: 'treinos',
+  session_exercises: 'exercícios dos treinos',
+  session_sets: 'séries',
+  personal_records: 'recordes',
+  user_profile: 'perfil',
+  body_weight_entries: 'pesagens',
+  scheduled_workouts: 'agendamentos',
+  app_metadata: 'configurações',
+};
+
+/**
+ * Traduz o resumo da importação para o que o usuário entende.
+ *
+ * "412 registros" não diz nada; "23 séries, 5 treinos" deixa ele conferir se
+ * veio o que esperava — que é o ponto de sincronizar dois aparelhos na mão.
+ */
+function resumoLegivel(summary: ImportSummary): string {
+  const partes = Object.entries(summary)
+    .filter(([, n]) => (n ?? 0) > 0)
+    .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+    .map(([tabela, n]) => `${n} ${NOMES_DAS_TABELAS[tabela] ?? tabela}`);
+
+  if (partes.length === 0) {
+    return 'O arquivo não trouxe nada de novo — os dados já estavam todos aqui.';
+  }
+  return `Entraram: ${partes.join(', ')}.`;
+}
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background.base },
