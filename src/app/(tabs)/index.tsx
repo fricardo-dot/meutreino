@@ -21,6 +21,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { scheduledWorkoutsRepository } from '@/repositories/scheduled-workouts.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
+import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
 import {
   calendarService,
   type CalendarDay,
@@ -51,6 +52,14 @@ export default function CalendarioScreen() {
   const [weekStart, setWeekStart] = useState<Date>(() => calendarService.getWeekStart());
   const [weekStatus, setWeekStatus] = useState<WeekStatus | null>(null);
   const [monthLabel, setMonthLabel] = useState('');
+  /**
+   * Pacote em uso — o bloco de treino atual.
+   *
+   * Fica no cabeçalho porque "semana 3 de um bloco de 6 a 8" é a informação
+   * que orienta a semana inteira; sem ela o calendário mostra treinos soltos e
+   * não um programa em andamento.
+   */
+  const [pacote, setPacote] = useState<{ name: string; activated_at: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -89,6 +98,7 @@ export default function CalendarioScreen() {
       setDays(built);
       setWeekStatus(ws);
       setMonthLabel(calendarService.getMonthLabel(weekStart));
+      setPacote(await workoutPacksRepository.getActive(db));
       // Calcula continue/restart (nomes pro modal) — só interessa pra semana atual.
       if (isCurrentWeek(weekStart)) {
         const lastCompleted = await sessionsRepository.getLastCompleted(db);
@@ -356,11 +366,35 @@ export default function CalendarioScreen() {
     );
   }
 
+  /**
+   * Em que semana do bloco cai a semana exibida.
+   *
+   * `null` quando não dá para dizer: pacote sem `activated_at` (arquivado que
+   * nunca foi usado, ou backup de uma versão anterior à coluna) ou semana
+   * anterior à ativação — navegando para antes do bloco, "semana 0" e
+   * "semana −2" não querem dizer nada.
+   */
+  const semanaDoBloco = (() => {
+    if (!pacote?.activated_at) return null;
+    const n = calendarService.getSemanaDoBloco(pacote.activated_at, weekStart);
+    return n >= 1 ? n : null;
+  })();
+
   return (
     <View style={styles.screen}>
       {/* Cabeçalho: mês + navegação */}
       <View style={styles.header}>
-        <Text style={styles.monthLabel}>{monthLabel}</Text>
+        <View style={styles.tituloWrap}>
+          <Text style={styles.monthLabel}>{monthLabel}</Text>
+          {/* Semana da SEMANA EXIBIDA, não de hoje: navegando para trás, o
+              número acompanha e diz em que ponto do bloco aquela semana foi. */}
+          {pacote ? (
+            <Text style={styles.blocoLabel} numberOfLines={1}>
+              {pacote.name}
+              {semanaDoBloco !== null ? ` · semana ${semanaDoBloco}` : ''}
+            </Text>
+          ) : null}
+        </View>
         <View style={styles.navRow}>
           <Pressable onPress={goPrevWeek} style={styles.navBtn} hitSlop={8}>
             <Text style={styles.navArrow}>‹</Text>
@@ -919,7 +953,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  tituloWrap: { flex: 1, marginRight: spacing.sm },
   monthLabel: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
+  blocoLabel: {
+    color: colors.text.muted,
+    fontSize: typography.size.xs,
+    fontWeight: '500',
+    marginTop: 2,
+  },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   navBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   navArrow: { color: colors.accent.base, fontSize: typography.size['2xl'], fontWeight: '300' },

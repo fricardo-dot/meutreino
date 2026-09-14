@@ -1,4 +1,4 @@
-import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8, SQL_MIGRATION_V9 } from './schema';
+import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8, SQL_MIGRATION_V9, SQL_MIGRATION_V10 } from './schema';
 
 /**
  * Migrations versionadas do banco de dados.
@@ -81,6 +81,13 @@ export const migrations: Migration[] = [
       'Cria workout_packs (pacotes de treino / mesociclos) e a coluna ' +
       'workouts.pack_id, adotando as fichas existentes num pacote inicial.',
     up: SQL_MIGRATION_V9,
+  },
+  {
+    version: 10,
+    description:
+      'Adiciona workout_packs.activated_at — desde quando o pacote está em ' +
+      'uso, que created_at não responde depois de uma reativação.',
+    up: SQL_MIGRATION_V10,
   },
 ];
 

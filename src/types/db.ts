@@ -97,6 +97,14 @@ export interface WorkoutPackRow {
   created_at: string;
   /** Quando saiu de uso. NULL enquanto ativo. */
   archived_at: string | null;
+  /**
+   * Quando ENTROU em uso — não quando foi criado.
+   *
+   * É o que responde "há quantas semanas estou neste bloco": reativar um
+   * pacote arquivado recomeça a contagem. NULL em pacote arquivado que nunca
+   * foi usado (o seed cria assim).
+   */
+  activated_at: string | null;
 }
 
 export interface WorkoutInput {

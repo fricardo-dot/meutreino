@@ -86,7 +86,8 @@ export const workoutPacksRepository = {
       }
 
       const criado = await tx.runAsync(
-        `INSERT INTO workout_packs (name, is_active) VALUES (?, 1);`,
+        `INSERT INTO workout_packs (name, is_active, activated_at)
+         VALUES (?, 1, CURRENT_TIMESTAMP);`,
         [name],
       );
       novoId = criado.lastInsertRowId;
@@ -116,7 +117,9 @@ export const workoutPacksRepository = {
         await arquivar(tx, atual.id);
       }
       const r = await tx.runAsync(
-        `UPDATE workout_packs SET is_active = 1, archived_at = NULL WHERE id = ?;`,
+        `UPDATE workout_packs
+            SET is_active = 1, archived_at = NULL, activated_at = CURRENT_TIMESTAMP
+          WHERE id = ?;`,
         [packId],
       );
 

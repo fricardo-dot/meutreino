@@ -238,6 +238,27 @@ export const calendarService = {
     const d = weekStart;
     return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
   },
+
+  /**
+   * Em que semana do bloco estamos — 1 na semana em que o pacote entrou em uso.
+   *
+   * Conta por SEMANAS DE CALENDÁRIO, não por múltiplos de sete dias: o bloco
+   * vira na segunda-feira junto com a semana de treino, e não na quinta só
+   * porque foi numa quinta que o pacote foi ativado. É assim que se lê um
+   * programa de 6 a 8 semanas.
+   *
+   * Recebe o `activated_at` do pacote, que é UTC — daí a conversão para data
+   * local antes de qualquer conta (ativar às 22h no Brasil cai no dia seguinte
+   * em UTC e adiantaria o bloco em uma semana).
+   */
+  getSemanaDoBloco(activatedAtUtc: string, hoje: Date = new Date()): number {
+    const inicio = this.getWeekStart(
+      new Date(`${utcToLocalISODate(activatedAtUtc)}T12:00:00`),
+    );
+    const atual = this.getWeekStart(hoje);
+    const dias = Math.round((atual.getTime() - inicio.getTime()) / 86_400_000);
+    return Math.floor(dias / 7) + 1;
+  },
 };
 
 // ── Helpers de data (sem libs externas) ─────────────────────────────────

@@ -420,3 +420,23 @@ export const SQL_MIGRATION_V9 = /* sql */ `
      SET pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
    WHERE pack_id IS NULL;
 `;
+
+/**
+ * v10 — quando o pacote entrou em uso.
+ *
+ * `created_at` não serve para "há quantas semanas estou neste bloco":
+ * reativar um pacote arquivado ("Voltar a usar") não muda a data de criação,
+ * e o bloco recomeçaria contando de anos atrás. `archived_at` também não —
+ * ele é zerado justamente na reativação.
+ *
+ * Backfill: o pacote em uso passa a contar da criação dele, que é o melhor
+ * dado que existe retroativamente. Os arquivados ficam NULL — só voltam a ter
+ * data se forem reativados.
+ */
+export const SQL_MIGRATION_V10 = /* sql */ `
+  ALTER TABLE workout_packs ADD COLUMN activated_at TEXT;
+
+  UPDATE workout_packs
+     SET activated_at = created_at
+   WHERE is_active = 1;
+`;
