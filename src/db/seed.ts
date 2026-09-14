@@ -30,6 +30,20 @@ const SEED_WORKOUTS_KEY = 'seed_workouts_v1';
 const SEED_PACK_HIBRIDO_KEY = 'seed_pack_hibrido_v1';
 
 /**
+ * Marca que as notas de corrida já foram preenchidas no pacote "Treino
+ * Híbrido".
+ *
+ * Existe porque as notas chegaram DEPOIS do pacote: quem abriu o app entre as
+ * duas versões ficou com o pacote criado e `seed_pack_hibrido_v1` gravado, e o
+ * marcador de criação — corretamente — impede recriar. Sem este segundo
+ * marcador, a prescrição de corrida nunca alcançaria esses bancos.
+ *
+ * Bumpar o marcador de criação NÃO resolveria: criaria um segundo pacote com o
+ * mesmo nome.
+ */
+const SEED_PACK_HIBRIDO_NOTAS_KEY = 'seed_pack_hibrido_notas_v1';
+
+/**
  * Seed inicial do banco.
  *
  * IDEMPOTENTE: pode ser chamada em toda inicialização sem risco.
@@ -95,7 +109,60 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
         PACK_HIBRIDO_WORKOUTS,
       );
       await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_KEY, '1');
+      // Nasceu com as notas: nada a preencher depois.
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_NOTAS_KEY, '1');
     });
+  } else {
+    // 5. Notas de corrida num pacote que já existia (ver o marcador acima).
+    const notasPreenchidas = await appMetadataRepository.get(
+      db,
+      SEED_PACK_HIBRIDO_NOTAS_KEY,
+    );
+    if (notasPreenchidas === null) {
+      await db.withTransactionAsync(async (tx) => {
+        await preencherNotasDoHibrido(tx);
+        await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_NOTAS_KEY, '1');
+      });
+    }
+  }
+}
+
+/**
+ * Preenche a prescrição de corrida num pacote "Treino Híbrido" já existente.
+ *
+ * Só escreve onde `notes IS NULL`. Nota que o usuário tenha escrito fica como
+ * está — o app não tem o direito de sobrescrever texto dele para instalar o
+ * próprio.
+ *
+ * O pacote é localizado pelo NOME, que é o único vínculo disponível: o seed
+ * não guardou o id em lugar nenhum. Se o usuário renomeou, nada acontece — e
+ * não acontecer é o desfecho certo para um pacote que ele já adotou como seu.
+ * O marcador é gravado de qualquer forma: a tentativa é única, não uma busca
+ * que fica rodando toda inicialização.
+ */
+async function preencherNotasDoHibrido(db: DbTransaction): Promise<void> {
+  const pack = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM workout_packs WHERE name = ? ORDER BY id LIMIT 1;`,
+    [PACK_HIBRIDO_NOME],
+  );
+  if (!pack) {
+    return;
+  }
+
+  await db.runAsync(
+    `UPDATE workout_packs SET notes = ? WHERE id = ? AND notes IS NULL;`,
+    [PACK_HIBRIDO_NOTAS, pack.id],
+  );
+
+  for (const ficha of PACK_HIBRIDO_WORKOUTS) {
+    if (ficha.notes === undefined) {
+      continue;
+    }
+    await db.runAsync(
+      `UPDATE workouts SET notes = ?
+       WHERE pack_id = ? AND name = ? AND notes IS NULL;`,
+      [ficha.notes, pack.id, ficha.name],
+    );
   }
 }
 
