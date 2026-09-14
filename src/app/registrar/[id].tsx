@@ -64,6 +64,9 @@ export default function RegistrarSessaoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = Number(id);
   const { db, status } = useDatabase();
+  /** De qual exercício é o descanso em curso — a barra flutua longe do card. */
+  const [restExercicio, setRestExercicio] = useState<string | null>(null);
+  const restTimer = useRestTimer();
 
   const [session, setSession] = useState<SessionRow | null>(null);
   /** Observação da ficha de origem: a corrida prescrita para o dia. */
@@ -209,10 +212,41 @@ export default function RegistrarSessaoScreen() {
             sets={setsByExercise[item.id] ?? []}
             onSaved={() => void load()}
             onError={setErrorMsg}
+            onStartRest={(endsAt) => {
+              setRestExercicio(item.exercise_name);
+              restTimer.start(endsAt);
+            }}
           />
         )}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
+        contentContainerStyle={{
+          padding: spacing.lg,
+          // A barra de descanso flutua ACIMA do rodapé: sem esta folga extra
+          // ela taparia o último exercício da lista.
+          paddingBottom: restTimer.isActive ? 190 : 120,
+        }}
       />
+
+      {/* Descanso — flutuante de propósito.
+          Ele morava dentro do card do exercício e sumia da tela assim que o
+          usuário rolava para ver o próximo, que é exatamente o que se faz
+          durante o descanso. Aqui ele fica fixo acima do rodapé e diz de qual
+          exercício é o descanso, já que não está mais ao lado dele. */}
+      {restTimer.isActive ? (
+        <View style={styles.restBar}>
+          <View style={styles.restTextos}>
+            <Text style={styles.restLabel}>DESCANSO</Text>
+            {restExercicio ? (
+              <Text style={styles.restExercicio} numberOfLines={1}>
+                {restExercicio}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={styles.restTime}>{restTimer.remaining}s</Text>
+          <Pressable onPress={restTimer.cancel} hitSlop={8}>
+            <Text style={styles.restSkip}>Pular</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.footer}>
         {session.status === 'em_andamento' ? (
@@ -263,6 +297,7 @@ function ExerciseBlock({
   sets,
   onSaved,
   onError,
+  onStartRest,
 }: {
   sessionExercise: SessionExerciseWithPlan;
   sessionId: number;
@@ -270,9 +305,15 @@ function ExerciseBlock({
   onSaved: () => void;
   /** Reporta falha ao pai, que é quem tem o diálogo de mensagem. */
   onError: (mensagem: string) => void;
+  /**
+   * Avisa a tela para iniciar o descanso.
+   *
+   * O cronômetro é UM só, da tela, e não um por card: descansa-se de um
+   * exercício por vez, e um segundo descanso começando substitui o anterior.
+   */
+  onStartRest: (restEndsAt: number) => void;
 }) {
   const { db } = useDatabase();
-  const restTimer = useRestTimer();
   const [weight, setWeight] = useState('0');
   const [reps, setReps] = useState('0');
   const [rir, setRir] = useState('');
@@ -349,7 +390,7 @@ function ExerciseBlock({
         restSeconds,
       });
       setLastResult(result);
-      if (result.restEndsAt) restTimer.start(result.restEndsAt);
+      if (result.restEndsAt) onStartRest(result.restEndsAt);
       onSaved();
     } catch (error) {
       // Era um try/finally sem catch: a série não era salva, o botão voltava
@@ -415,17 +456,6 @@ function ExerciseBlock({
               <Text style={styles.setDetail}>{s.rir !== null ? `RIR ${s.rir}` : '—'}</Text>
             </View>
           ))}
-        </View>
-      )}
-
-      {/* Cronômetro de descanso (próprio do exercício) */}
-      {restTimer.isActive && (
-        <View style={styles.restBar}>
-          <Text style={styles.restLabel}>Descanso</Text>
-          <Text style={styles.restTime}>{restTimer.remaining}s</Text>
-          <Pressable onPress={restTimer.cancel} hitSlop={8}>
-            <Text style={styles.restSkip}>Pular</Text>
-          </Pressable>
         </View>
       )}
 
@@ -550,15 +580,24 @@ const styles = StyleSheet.create({
   sessionName: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600', textAlign: 'center' },
   sessionStatus: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2, fontWeight: '500' },
   restBar: {
+    // Flutuante: ancorada logo acima do rodapé, fora da lista que rola.
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: 96,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
     backgroundColor: colors.background.elevated,
+    borderRadius: radius.lg,
+    borderColor: colors.accent.base,
+    borderWidth: 1,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderBottomColor: colors.background.border,
-    borderBottomWidth: 1,
   },
+  restTextos: { flex: 1 },
+  restExercicio: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: 2 },
   restLabel: { color: colors.text.muted, fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
   restTime: { color: colors.accent.base, fontSize: typography.size.xl, fontWeight: '700' },
   restSkip: { color: colors.text.secondary, fontSize: typography.size.sm, fontWeight: '500' },
