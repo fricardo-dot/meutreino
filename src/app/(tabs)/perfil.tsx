@@ -380,9 +380,9 @@ export default function PerfilScreen() {
       <SectionTitle>Backup dos dados</SectionTitle>
       <Text style={styles.reportHint}>
         É assim que se leva o treino de um aparelho para outro: exporte aqui e
-        importe no outro. Exporte SEMPRE do aparelho usado por último — na
-        importação o arquivo vence, e um treino registrado só no outro aparelho
-        pode ser sobrescrito.
+        importe no outro. Treino registrado só no aparelho que recebe continua
+        lá — os dois lados se somam. Para os dois ficarem iguais, faça a volta
+        também.
       </Text>
       <View style={styles.backupRow}>
         <Pressable style={styles.exportBtn} onPress={handleExport}>
@@ -411,9 +411,9 @@ export default function PerfilScreen() {
             ? `Arquivo de ${dataHoraLegivel(importInfo.exportedAt)}, com ` +
               `${importInfo.total} registro(s).\n\n`
             : '') +
-          'Os dados do arquivo entram por cima dos atuais. O que for novo é ' +
-          'criado; o que ocupar a mesma posição é substituído pelo do arquivo, ' +
-          'mesmo que aqui seja outro treino.'
+          'O que está no arquivo e não está aqui é criado; o que existe nos ' +
+          'dois é atualizado com a versão do arquivo. Nada deste aparelho é ' +
+          'apagado.'
         }
         confirmText="Importar"
         cancelText="Cancelar"

@@ -3,6 +3,7 @@ import type {
   DbTransaction,
   SqlParameter,
 } from '@/types/app-database';
+import type { DbExecutor } from '@/types/db-executor';
 
 /**
  * Versão do formato de backup.
@@ -136,17 +137,26 @@ export const backupService = {
   },
 
   /**
-   * Importa um JSON de backup, restaurando todas as tabelas.
+   * Importa um JSON de backup, MESCLANDO com o que já existe.
    *
-   * - Tudo dentro de UMA transação (`withTransactionAsync`): ou tudo entra,
-   *   ou nada (rollback em caso de erro).
-   * - Usa UPSERT (`ON CONFLICT DO UPDATE`): linha existente com o mesmo id é
-   *   atualizada no lugar, sem DELETE e sem disparar cascata. Os ids originais
-   *   são preservados.
-   * - As tabelas são inseridas na ordem de {@link BACKUP_TABLES} (pais antes
-   *   de filhos) para satisfazer as FKs.
-   * - Para cada tabela, consulta `PRAGMA table_info` para descobrir as colunas
-   *   do DB alvo e importar apenas as colunas que existem (forward compat).
+   * Mesclar de verdade exige responder "esta linha do arquivo é a mesma linha
+   * que já tenho aqui?" — e `id` não responde isso. Ele é AUTOINCREMENT local:
+   * a primeira sessão criada no celular e a primeira criada no PC nascem ambas
+   * com id 1 sem terem nada a ver uma com a outra. Casar por id fazia uma
+   * sobrescrever a outra, e sumia treino registrado.
+   *
+   * Quem responde é o `uid` (migration v11), sorteado no aparelho que criou a
+   * linha. O id do arquivo deixa de ser gravado: cada linha nova recebe um id
+   * LOCAL, e as chaves estrangeiras do arquivo são traduzidas para esses ids
+   * enquanto a importação avança — por isso a ordem de {@link BACKUP_TABLES},
+   * com pai antes de filho, deixou de ser só conveniência e virou requisito.
+   *
+   * Backup ANTIGO (sem uid) continua importável: aí a identidade vem da chave
+   * natural de cada tabela (o nome do exercício, o horário de início da
+   * sessão, a data da pesagem). É também o que faz os catálogos dos dois
+   * aparelhos convergirem em vez de duplicarem.
+   *
+   * Tudo dentro de UMA transação: ou entra inteiro, ou nada.
    *
    * @param jsonString conteúdo do arquivo de backup (gerado por `exportData`).
    * @returns resumo com a contagem de linhas importadas por tabela.
@@ -160,6 +170,9 @@ export const backupService = {
     const summary: ImportSummary = {};
 
     await db.withTransactionAsync(async (tx) => {
+      /** Por tabela: id COMO VEIO NO ARQUIVO -> id local correspondente. */
+      const mapas = new Map<BackupTableName, Map<number, number>>();
+
       for (const table of BACKUP_TABLES) {
         const rows = payload.data[table];
 
@@ -176,86 +189,19 @@ export const backupService = {
           continue;
         }
 
-        const pkCols = await getPrimaryKey(db, table);
-
         // Os pacotes do arquivo trazem consigo qual estava ativo. Se o aparelho
-        // local também tem um ativo com OUTRO id, os dois coexistiriam por um
-        // instante e o índice único derrubaria a importação inteira — falha
-        // garantida ao restaurar num aparelho que já foi usado, que é
-        // exatamente o caso de trocar de celular.
-        //
-        // Zerar antes deixa a decisão com o arquivo; a reconciliação depois do
-        // laço garante que sobre exatamente um ativo.
+        // local também tem um ativo, os dois coexistiriam por um instante e o
+        // índice único derrubaria a importação inteira. Zerar antes deixa a
+        // decisão com o arquivo; `reconciliarPacotes` garante que sobre um.
         if (table === 'workout_packs' && rows.length > 0) {
           await tx.runAsync('UPDATE workout_packs SET is_active = 0;');
         }
 
-        let imported = 0;
-        for (const row of rows) {
-          // Linha que não é objeto (arquivo corrompido ou de outra origem)
-          // faria o `c in row` abaixo lançar TypeError. Pula e segue.
-          if (typeof row !== 'object' || row === null || Array.isArray(row)) {
-            console.warn(`[backup] Linha inválida em "${table}" — pulando.`);
-            continue;
-          }
-
-          // Apenas colunas presentes tanto no DB quanto na linha (ordem do DB).
-          // Isto descarta automaticamente colunas desconhecidas do JSON
-          // (forward compat) e tolera linhas com colunas opcionais ausentes.
-          const cols = dbColumns.filter((c) => c in row);
-          if (cols.length === 0) continue;
-
-          const placeholders = cols.map(() => '?').join(', ');
-          const params = cols.map((c) => toSqlValue(row[c]));
-
-          // UPSERT, não REPLACE.
-          //
-          // `INSERT OR REPLACE` parece um upsert mas não é: o SQLite APAGA a
-          // linha conflitante antes de inserir a nova, e o DELETE dispara as
-          // foreign keys. Com o schema deste app isso dava dois estragos:
-          //   - apagar um `exercise` referenciado por `workout_exercises`
-          //     (ON DELETE RESTRICT) abortava a importação inteira;
-          //   - apagar um `workout` levava junto, por ON DELETE CASCADE, os
-          //     `workout_exercises` e `scheduled_workouts` locais — some
-          //     silenciosamente o que não estivesse no arquivo importado.
-          //
-          // `ON CONFLICT DO UPDATE` atualiza a linha no lugar: nenhum DELETE,
-          // nenhuma cascata. Se a linha do backup colidir com OUTRA linha por
-          // um índice único que não seja a PK (dois exercícios de mesmo nome
-          // com ids diferentes, por exemplo), a importação falha e a transação
-          // inteira é desfeita — o usuário mantém os dados que tinha, que é
-          // muito melhor que apagá-los em silêncio.
-          const temPk = pkCols.length > 0 && pkCols.every((c) => cols.includes(c));
-          const colsParaAtualizar = cols.filter((c) => !pkCols.includes(c));
-
-          let sql: string;
-          if (!temPk) {
-            // Sem PK na linha (não ocorre neste schema): insere e deixa o
-            // SQLite atribuir o id.
-            sql = `INSERT INTO ${table} (${cols.join(', ')})
-                   VALUES (${placeholders});`;
-          } else if (colsParaAtualizar.length === 0) {
-            // A linha só traz a própria PK — não há o que atualizar.
-            sql = `INSERT INTO ${table} (${cols.join(', ')})
-                   VALUES (${placeholders})
-                   ON CONFLICT(${pkCols.join(', ')}) DO NOTHING;`;
-          } else {
-            sql = `INSERT INTO ${table} (${cols.join(', ')})
-                   VALUES (${placeholders})
-                   ON CONFLICT(${pkCols.join(', ')}) DO UPDATE SET
-                     ${colsParaAtualizar
-                       .map((c) => `${c} = excluded.${c}`)
-                       .join(', ')};`;
-          }
-
-          await tx.runAsync(sql, params);
-          imported += 1;
-        }
-
-        summary[table] = imported;
+        summary[table] = await importarTabela(tx, table, rows, dbColumns, mapas);
       }
 
       await reconciliarPacotes(tx);
+      await reconciliarRecordes(tx);
     });
 
     return summary;
@@ -313,8 +259,352 @@ async function reconciliarPacotes(tx: DbTransaction): Promise<void> {
   );
 }
 
+/**
+ * Como cada tabela é identificada entre aparelhos.
+ *
+ * `fks` diz quais colunas apontam para outra tabela — são traduzidas do id do
+ * arquivo para o id local antes de gravar.
+ *
+ * `natural` é a identidade de reserva, usada quando o `uid` não resolve:
+ * backup gerado antes da v11, ou a mesma coisa criada dos dois lados sem uma
+ * saber da outra (o catálogo de exercícios do seed é o caso clássico). Sem
+ * ela, importar duplicaria tudo que os dois aparelhos têm em comum.
+ *
+ * `porChavePrimaria` marca as duas tabelas que não precisam de nada disso:
+ * `app_metadata` tem chave textual, igual nos dois aparelhos, e `user_profile`
+ * é linha única — mesclar perfil é sobrescrever mesmo.
+ */
+interface RegraDeMesclagem {
+  fks?: Partial<Record<string, BackupTableName>>;
+  natural?: { coluna: string; sql?: string; norm?: (v: SqlParameter) => SqlParameter }[];
+  porChavePrimaria?: true;
+}
+
+const REGRAS: Record<BackupTableName, RegraDeMesclagem> = {
+  exercises: {
+    // O índice único já é em LOWER(TRIM(name)): a comparação aqui é a mesma.
+    natural: [{
+      coluna: 'name',
+      sql: 'LOWER(TRIM(name))',
+      norm: (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
+    }],
+  },
+  workout_packs: { natural: [{ coluna: 'name' }] },
+  workouts: {
+    fks: { pack_id: 'workout_packs' },
+    natural: [{ coluna: 'pack_id' }, { coluna: 'name' }],
+  },
+  workout_exercises: {
+    fks: { workout_id: 'workouts', exercise_id: 'exercises' },
+    natural: [{ coluna: 'workout_id' }, { coluna: 'exercise_id' }, { coluna: 'sort_order' }],
+  },
+  sessions: {
+    fks: { workout_id: 'workouts' },
+    // `started_at` tem segundos: dois treinos não começam no mesmo instante.
+    natural: [{ coluna: 'started_at' }],
+  },
+  session_exercises: {
+    fks: {
+      session_id: 'sessions',
+      exercise_id: 'exercises',
+      workout_exercise_id: 'workout_exercises',
+    },
+    natural: [{ coluna: 'session_id' }, { coluna: 'sort_order' }],
+  },
+  session_sets: {
+    fks: { session_exercise_id: 'session_exercises' },
+    natural: [{ coluna: 'session_exercise_id' }, { coluna: 'set_number' }],
+  },
+  personal_records: {
+    fks: {
+      exercise_id: 'exercises',
+      session_set_id: 'session_sets',
+      session_id: 'sessions',
+    },
+    natural: [{ coluna: 'exercise_id' }, { coluna: 'pr_type' }, { coluna: 'achieved_at' }],
+  },
+  user_profile: { porChavePrimaria: true },
+  body_weight_entries: { natural: [{ coluna: 'date' }] },
+  scheduled_workouts: {
+    fks: { workout_id: 'workouts' },
+    natural: [{ coluna: 'week_start_date' }, { coluna: 'day_of_week' }],
+  },
+  app_metadata: { porChavePrimaria: true },
+};
+
+/**
+ * Importa uma tabela e devolve quantas linhas entraram.
+ *
+ * Alimenta `mapas` com a tradução id-do-arquivo -> id-local desta tabela, que
+ * as tabelas filhas usam logo em seguida.
+ */
+async function importarTabela(
+  tx: DbTransaction,
+  table: BackupTableName,
+  rows: unknown[],
+  dbColumns: string[],
+  mapas: Map<BackupTableName, Map<number, number>>,
+): Promise<number> {
+  const regra = REGRAS[table];
+  const mapa = new Map<number, number>();
+  mapas.set(table, mapa);
+
+  if (regra.porChavePrimaria) {
+    return upsertPorChavePrimaria(tx, table, rows, dbColumns);
+  }
+
+  const temUid = dbColumns.includes('uid');
+  /** Linhas locais já reivindicadas por alguma linha do arquivo. */
+  const usados = new Set<number>();
+  let importadas = 0;
+
+  for (const row of rows) {
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+      console.warn(`[backup] Linha inválida em "${table}" — pulando.`);
+      continue;
+    }
+    const origem = row as Record<string, unknown>;
+
+    const valores: Record<string, SqlParameter> = {};
+    for (const c of dbColumns) {
+      if (c in origem) valores[c] = toSqlValue(origem[c]);
+    }
+    if (Object.keys(valores).length === 0) continue;
+
+    if (!traduzirFks(table, valores, mapas)) {
+      // Filho cujo pai não veio no arquivo: gravar manteria o id do arquivo,
+      // que aqui aponta para outra coisa qualquer. Melhor não entrar.
+      console.warn(`[backup] Linha órfã em "${table}" — pulando.`);
+      continue;
+    }
+
+    const idLocal = await acharLocal(tx, table, valores, temUid, usados);
+
+    if (!(await liberarIndicesUnicos(tx, table, valores, idLocal))) continue;
+
+    // O id do arquivo NUNCA é gravado: ele vale só no aparelho que o gerou.
+    const colunas = Object.keys(valores).filter((c) => c !== 'id');
+    if (colunas.length === 0) continue;
+
+    let idFinal: number;
+    if (idLocal !== null) {
+      await tx.runAsync(
+        `UPDATE ${table} SET ${colunas.map((c) => `${c} = ?`).join(', ')} WHERE id = ?;`,
+        [...colunas.map((c) => valores[c]), idLocal],
+      );
+      idFinal = idLocal;
+    } else {
+      const r = await tx.runAsync(
+        `INSERT INTO ${table} (${colunas.join(', ')})
+         VALUES (${colunas.map(() => '?').join(', ')});`,
+        colunas.map((c) => valores[c]),
+      );
+      idFinal = r.lastInsertRowId;
+    }
+
+    usados.add(idFinal);
+    if (typeof origem.id === 'number') mapa.set(origem.id, idFinal);
+    importadas += 1;
+  }
+
+  return importadas;
+}
+
+/**
+ * Traduz as FKs da linha, do id do arquivo para o id local.
+ *
+ * @returns `false` se alguma referência não tem correspondente — linha órfã.
+ */
+function traduzirFks(
+  table: BackupTableName,
+  valores: Record<string, SqlParameter>,
+  mapas: Map<BackupTableName, Map<number, number>>,
+): boolean {
+  for (const [coluna, tabelaPai] of Object.entries(REGRAS[table].fks ?? {})) {
+    const valor = valores[coluna];
+    if (valor === undefined || valor === null || tabelaPai === undefined) continue;
+
+    const mapaPai = mapas.get(tabelaPai);
+    // Arquivo antigo que nem trazia essa tabela: mantém o valor como veio,
+    // que é o comportamento de antes desta mudança.
+    if (!mapaPai) continue;
+
+    const local = mapaPai.get(Number(valor));
+    if (local === undefined) return false;
+    valores[coluna] = local;
+  }
+  return true;
+}
+
+/**
+ * Acha a linha local correspondente: primeiro pelo `uid`, depois pela chave
+ * natural. `null` quando é linha nova aqui.
+ *
+ * `usados` impede que duas linhas do arquivo caiam na mesma linha local — dois
+ * pacotes de mesmo nome, por exemplo, em que a segunda apagaria a primeira.
+ */
+async function acharLocal(
+  tx: DbTransaction,
+  table: BackupTableName,
+  valores: Record<string, SqlParameter>,
+  temUid: boolean,
+  usados: Set<number>,
+): Promise<number | null> {
+  if (temUid && typeof valores.uid === 'string') {
+    const achado = await tx.getFirstAsync<{ id: number }>(
+      `SELECT id FROM ${table} WHERE uid = ? LIMIT 1;`,
+      [valores.uid],
+    );
+    if (achado) return achado.id;
+  }
+
+  const natural = REGRAS[table].natural;
+  if (!natural || natural.length === 0) return null;
+
+  const condicoes: string[] = [];
+  const params: SqlParameter[] = [];
+  for (const chave of natural) {
+    const valor = valores[chave.coluna];
+    // Sem a coluna na linha do arquivo não dá para afirmar identidade.
+    if (valor === undefined) return null;
+    const expr = chave.sql ?? chave.coluna;
+    if (valor === null) {
+      condicoes.push(`${expr} IS NULL`);
+      continue;
+    }
+    condicoes.push(`${expr} = ?`);
+    params.push(chave.norm ? chave.norm(valor) : valor);
+  }
+
+  const candidatos = await tx.getAllAsync<{ id: number }>(
+    `SELECT id FROM ${table} WHERE ${condicoes.join(' AND ')} ORDER BY id;`,
+    params,
+  );
+  return candidatos.find((c) => !usados.has(c.id))?.id ?? null;
+}
+
+/**
+ * Abre espaço nos índices únicos parciais antes de gravar.
+ *
+ * Dois casos, os dois capazes de derrubar a importação inteira:
+ *
+ *  - **sessão em andamento**: só pode haver uma. Se o arquivo traz uma e aqui
+ *    já existe OUTRA, a do arquivo é pulada — treino em andamento é do momento
+ *    e do aparelho, e abortar a importação por causa dele seria pior;
+ *
+ *  - **recorde vigente**: um por exercício+tipo. O do arquivo entra e o local
+ *    sai de vigente; `reconciliarRecordes` decide no fim quem é o maior.
+ *
+ * @returns `false` quando a linha deve ser pulada.
+ */
+async function liberarIndicesUnicos(
+  tx: DbTransaction,
+  table: BackupTableName,
+  valores: Record<string, SqlParameter>,
+  idLocal: number | null,
+): Promise<boolean> {
+  if (table === 'sessions' && valores.status === 'em_andamento') {
+    const emAndamento = await tx.getFirstAsync<{ id: number }>(
+      "SELECT id FROM sessions WHERE status = 'em_andamento' LIMIT 1;",
+    );
+    if (emAndamento && emAndamento.id !== idLocal) {
+      console.warn('[backup] Já há um treino em andamento aqui — pulando o do arquivo.');
+      return false;
+    }
+  }
+
+  if (table === 'personal_records' && Number(valores.is_current) === 1) {
+    await tx.runAsync(
+      `UPDATE personal_records SET is_current = 0
+        WHERE exercise_id = ? AND pr_type = ? AND is_current = 1
+          AND id IS NOT ?;`,
+      [valores.exercise_id ?? null, valores.pr_type ?? null, idLocal],
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Caminho das tabelas cuja chave já é a mesma nos dois aparelhos.
+ *
+ * `app_metadata` é chave textual; `user_profile` é linha única. Upsert por
+ * chave primária, como sempre foi.
+ */
+async function upsertPorChavePrimaria(
+  tx: DbTransaction,
+  table: BackupTableName,
+  rows: unknown[],
+  dbColumns: string[],
+): Promise<number> {
+  const pkCols = await getPrimaryKey(tx, table);
+  let importadas = 0;
+
+  for (const row of rows) {
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+      console.warn(`[backup] Linha inválida em "${table}" — pulando.`);
+      continue;
+    }
+    const origem = row as Record<string, unknown>;
+    const cols = dbColumns.filter((c) => c in origem);
+    if (cols.length === 0) continue;
+
+    const params = cols.map((c) => toSqlValue(origem[c]));
+    const temPk = pkCols.length > 0 && pkCols.every((c) => cols.includes(c));
+    const atualizaveis = cols.filter((c) => !pkCols.includes(c));
+
+    // UPSERT, não REPLACE: REPLACE apaga a linha conflitante antes de inserir
+    // e dispara as FKs — abortava por RESTRICT e apagava filhos por CASCADE.
+    let sql: string;
+    if (!temPk) {
+      sql = `INSERT INTO ${table} (${cols.join(', ')})
+             VALUES (${cols.map(() => '?').join(', ')});`;
+    } else if (atualizaveis.length === 0) {
+      sql = `INSERT INTO ${table} (${cols.join(', ')})
+             VALUES (${cols.map(() => '?').join(', ')})
+             ON CONFLICT(${pkCols.join(', ')}) DO NOTHING;`;
+    } else {
+      sql = `INSERT INTO ${table} (${cols.join(', ')})
+             VALUES (${cols.map(() => '?').join(', ')})
+             ON CONFLICT(${pkCols.join(', ')}) DO UPDATE SET
+               ${atualizaveis.map((c) => `${c} = excluded.${c}`).join(', ')};`;
+    }
+
+    await tx.runAsync(sql, params);
+    importadas += 1;
+  }
+
+  return importadas;
+}
+
+/**
+ * Deixa um único recorde vigente por exercício+tipo, e que seja o maior.
+ *
+ * Os dois aparelhos podem ter recordes diferentes marcados como vigentes para
+ * o mesmo exercício. Durante o laço o do arquivo entra e o local sai de
+ * vigente; aqui a decisão é refeita olhando o VALOR, que é o que define um
+ * recorde. Empate desempata pela data mais recente.
+ */
+async function reconciliarRecordes(tx: DbTransaction): Promise<void> {
+  await tx.runAsync('UPDATE personal_records SET is_current = 0 WHERE is_current = 1;');
+  await tx.runAsync(
+    `UPDATE personal_records SET is_current = 1
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY exercise_id, pr_type
+                   ORDER BY value DESC, achieved_at DESC, id DESC
+                 ) AS posicao
+            FROM personal_records
+        )
+        WHERE posicao = 1
+      );`,
+  );
+}
+
 async function getTableColumns(
-  db: AppDatabase,
+  db: DbExecutor,
   table: BackupTableName,
 ): Promise<string[]> {
   const rows = await db.getAllAsync<{ name: string }>(
@@ -330,7 +620,7 @@ async function getTableColumns(
  * `app_metadata` usa `key`.
  */
 async function getPrimaryKey(
-  db: AppDatabase,
+  db: DbExecutor,
   table: BackupTableName,
 ): Promise<string[]> {
   const rows = await db.getAllAsync<{ name: string; pk: number }>(

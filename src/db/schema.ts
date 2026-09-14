@@ -440,3 +440,114 @@ export const SQL_MIGRATION_V10 = /* sql */ `
      SET activated_at = created_at
    WHERE is_active = 1;
 `;
+
+/**
+ * v11 — `uid`: identidade da linha que não depende do aparelho.
+ *
+ * O backup mesclava por chave primária, e `id` é AUTOINCREMENT LOCAL. Duas
+ * linhas criadas independentemente em dois aparelhos nascem com o mesmo id:
+ * na importação uma sobrescrevia a outra, e sumia treino registrado. Não era
+ * um bug do importador, era o id não significar nada fora do aparelho.
+ *
+ * Cada linha ganha um `uid` aleatório e único. A importação passa a casar por
+ * ele, e remapeia as chaves estrangeiras do arquivo para os ids locais.
+ *
+ * O preenchimento de linha nova fica num TRIGGER, e não no app: são mais de
+ * vinte lugares que inserem, e um esquecido geraria linha sem identidade —
+ * justamente a que se perderia na próxima sincronização. No SQLite o DEFAULT
+ * de ADD COLUMN precisa ser constante, então `randomblob` não cabe lá.
+ *
+ * `app_metadata` fica de fora: a chave dela já é texto e já é a mesma nos dois
+ * aparelhos. `user_profile` também: é linha única, e mesclar perfil é
+ * sobrescrever mesmo.
+ *
+ * O uid é SORTEADO, inclusive para o que os dois aparelhos têm em comum (o
+ * catálogo do seed). Derivá-lo do nome seria tentador e quebraria a migration:
+ * o índice de nome é parcial (`WHERE is_active = 1`), então um exercício
+ * arquivado pode repetir o nome de um ativo — dois uids iguais, e o app deixa
+ * de abrir. Quem faz os catálogos convergirem é a chave natural da importação,
+ * que casa pelo nome e faz os dois lados adotarem o mesmo uid na primeira
+ * sincronização.
+ */
+export const SQL_MIGRATION_V11 = /* sql */ `
+  ALTER TABLE exercises ADD COLUMN uid TEXT;
+  UPDATE exercises SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_exercises_uid ON exercises(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_exercises_uid AFTER INSERT ON exercises
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE exercises SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE workout_packs ADD COLUMN uid TEXT;
+  UPDATE workout_packs SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_workout_packs_uid ON workout_packs(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_workout_packs_uid AFTER INSERT ON workout_packs
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE workout_packs SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE workouts ADD COLUMN uid TEXT;
+  UPDATE workouts SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_workouts_uid ON workouts(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_workouts_uid AFTER INSERT ON workouts
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE workouts SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE workout_exercises ADD COLUMN uid TEXT;
+  UPDATE workout_exercises SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_workout_exercises_uid ON workout_exercises(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_workout_exercises_uid AFTER INSERT ON workout_exercises
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE workout_exercises SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE sessions ADD COLUMN uid TEXT;
+  UPDATE sessions SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_uid ON sessions(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_sessions_uid AFTER INSERT ON sessions
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE sessions SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE session_exercises ADD COLUMN uid TEXT;
+  UPDATE session_exercises SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_session_exercises_uid ON session_exercises(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_session_exercises_uid AFTER INSERT ON session_exercises
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE session_exercises SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE session_sets ADD COLUMN uid TEXT;
+  UPDATE session_sets SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_session_sets_uid ON session_sets(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_session_sets_uid AFTER INSERT ON session_sets
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE session_sets SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE personal_records ADD COLUMN uid TEXT;
+  UPDATE personal_records SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_personal_records_uid ON personal_records(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_personal_records_uid AFTER INSERT ON personal_records
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE personal_records SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE body_weight_entries ADD COLUMN uid TEXT;
+  UPDATE body_weight_entries SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_body_weight_entries_uid ON body_weight_entries(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_body_weight_entries_uid AFTER INSERT ON body_weight_entries
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE body_weight_entries SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+  ALTER TABLE scheduled_workouts ADD COLUMN uid TEXT;
+  UPDATE scheduled_workouts SET uid = lower(hex(randomblob(16))) WHERE uid IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_workouts_uid ON scheduled_workouts(uid) WHERE uid IS NOT NULL;
+  CREATE TRIGGER IF NOT EXISTS trg_scheduled_workouts_uid AFTER INSERT ON scheduled_workouts
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE scheduled_workouts SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+`;
