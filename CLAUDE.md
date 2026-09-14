@@ -45,6 +45,9 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
   precisa filtrar pelo pacote ativo; esquecer disso faz o mesociclo arquivado
   reaparecer misturado ao atual. Pacote também não se apaga, se arquiva:
   `pack_id` é ON DELETE RESTRICT porque as fichas dele sustentam o histórico.
+  Desde quando o bloco está em uso é `activated_at`, gravado na criação e em
+  toda reativação — `created_at` não serve (reativar não muda a criação) e
+  `archived_at` menos ainda (é zerado justamente ao reativar).
 - **`personal_records` bloqueia exclusões.** `session_set_id` e `session_id`
   usam `ON DELETE RESTRICT`: apagar série ou sessão exige apagar os recordes
   ANTES, na mesma transação. Já quebrou o botão "apagar todas as séries".
@@ -52,6 +55,12 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
   conflitante antes de inserir e dispara as FKs — abortava a importação por
   RESTRICT e apagava filhos por CASCADE. Use `ON CONFLICT DO UPDATE`.
 - `ensureSeedData` roda em toda inicialização e precisa continuar idempotente.
+- **Marcador de seed diz "criei", não "está atualizado".** Conteúdo novo num
+  seed já publicado não alcança quem já rodou aquele seed. Bumpar o marcador
+  duplica os dados; o que funciona é um passo próprio, com marcador próprio,
+  escrevendo só onde o campo está vazio. E ele não pode achar a linha pelo
+  nome: `workout_packs.name` e `workouts.name` não têm índice único — nome é
+  palpite, identifique pelo conteúdo.
 
 ## Datas e timezone
 
@@ -67,11 +76,17 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 
 ## Web / PWA
 
-- **A app é servida num subpath** (`/meutreino/` no GitHub Pages; raiz em dev).
-  Todo caminho de asset em runtime precisa ser **relativo** (`./sql-wasm.wasm`,
-  `./sw.js`). Caminho absoluto funciona em dev e quebra em produção — o erro só
-  aparece depois do deploy. Dentro de `public/sw.js` isso vale em dobro: derive
-  tudo de `BASE` (calculado a partir de `self.location`), nunca escreva `/…`.
+- **A app é servida num subpath** (`/meutreino/` no GitHub Pages; raiz em dev)
+  e o `404.html` a serve em QUALQUER caminho. Logo a página pode existir em
+  qualquer profundidade, e "relativo à página" não diz mais onde o asset está.
+  Nunca escreva `/algo` cru nem confie na URL aberta. São três casos:
+  - **Referência dentro do `index.html`** (ícones, manifest, `./sw.js`):
+    relativa, ancorada pelo `<base href>` que o CI injeta.
+  - **Caminho montado em código** (`sql-wasm.wasm`, em `client.web.ts`): monte
+    a partir de `extra.baseUrl`. `./sql-wasm.wasm` resolvia contra a rota e
+    buscava o WASM em `/meutreino/treino/` — a app inteira caía num deep link.
+  - **Dentro de `public/sw.js`**: derive tudo de `BASE`, calculado do
+    `self.location`. O worker não enxerga o `<base>` da página.
 - `BASE_URL` só existe no build do CI; `app.config.js` o repassa para
   `experiments.baseUrl`.
 - **A config estática vive em `app.json`.** O `app.config.js` recebe esse
@@ -79,9 +94,10 @@ O SQLite grava `CURRENT_TIMESTAMP` em **UTC**; as telas raciocinam em data
 - **`Alert.alert` não funciona em PWA no Safari iOS.** Use `<ConfirmDialog />`.
 - `public/` vai como está para `dist/`. Ao mudar asset cacheado, suba o
   `CACHE_VERSION` em `public/sw.js` — senão o usuário fica na versão velha.
-- Rota interna aberta direto pela URL só funciona porque o CI copia o
-  `index.html` para `dist/404.html` — o GitHub Pages não tem fallback de SPA.
-  Se o build sair do workflow atual, esse passo tem que ir junto.
+- Rota interna aberta direto pela URL depende de DOIS passos do workflow: a
+  cópia do `index.html` para `dist/404.html` (o Pages não tem fallback de SPA)
+  e a injeção do `<base href>`. Se o build sair do workflow atual, os dois vão
+  junto — sem o segundo, todo deep link quebra.
 - Push na `main` publica sozinho (Actions → Pages). Não existe staging.
 
 ## Convenções
