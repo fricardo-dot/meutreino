@@ -100,7 +100,7 @@ export default function PerfilScreen() {
     }
     try {
       const json = await backupService.exportData(db);
-      const nome = `meutreino-backup-${dataLocalISO()}.json`;
+      const nome = `meutreino-backup-${carimboLocal()}.json`;
       const arquivo = new File([json], nome, { type: 'application/json' });
 
       // No celular, baixar não serve: num PWA em standalone (iOS
@@ -155,8 +155,7 @@ export default function PerfilScreen() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const today = new Date().toISOString().slice(0, 10);
-        a.download = `meutreino-bloco-${today}.md`;
+        a.download = `meutreino-bloco-${carimboLocal()}.md`;
         a.click();
         URL.revokeObjectURL(url);
         setErrorMsg('Relatório do bloco gerado! Arquivo baixado e copiado pra área de transferência.');
@@ -707,17 +706,25 @@ function formatPR(type: string, value: number): string {
 // ── Estilos ────────────────────────────────────────────────────────────────
 
 /**
- * Data de HOJE em local, no formato YYYY-MM-DD.
+ * Carimbo de AGORA em hora local: `2026-09-14-161432`.
  *
- * `toISOString().slice(0, 10)` devolve a data UTC: exportar às 21h30 no Brasil
- * nomeava o arquivo com o dia seguinte. Num fluxo de dois aparelhos, em que a
- * data do nome é o que diz qual backup é o mais novo, isso confunde de verdade.
+ * Cada exportação gera um arquivo NOVO — o navegador nunca sobrescreve. Com só
+ * a data no nome, várias exportações do mesmo dia viravam "(1)", "(2)", "(3)"
+ * na pasta de downloads e descobrir qual era a mais recente virava adivinhação.
+ *
+ * Vai até os SEGUNDOS porque exportar duas vezes seguidas, para conferir se
+ * deu certo, acontece dentro do mesmo minuto — e aí só a hora e o minuto
+ * repetiriam o nome de novo.
+ *
+ * Local e não UTC: `toISOString()` devolveria o dia seguinte para qualquer
+ * exportação depois das 21h no Brasil, e é justamente a data do nome que diz
+ * qual backup é o mais novo.
  */
-function dataLocalISO(): string {
+function carimboLocal(): string {
   const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mes}-${dia}`;
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}` +
+    `-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
 }
 
 /** "12/09/2026 às 21:30" a partir do ISO gravado no backup. */
@@ -731,20 +738,20 @@ function dataHoraLegivel(iso: string): string {
   return `${dia}/${mes}/${d.getFullYear()} às ${hora}:${min}`;
 }
 
-/** Nome de cada tabela como o usuário a conhece. */
-const NOMES_DAS_TABELAS: Record<string, string> = {
-  exercises: 'exercícios',
-  workout_packs: 'pacotes',
-  workouts: 'fichas',
-  workout_exercises: 'exercícios das fichas',
-  sessions: 'treinos',
-  session_exercises: 'exercícios dos treinos',
-  session_sets: 'séries',
-  personal_records: 'recordes',
-  user_profile: 'perfil',
-  body_weight_entries: 'pesagens',
-  scheduled_workouts: 'agendamentos',
-  app_metadata: 'configurações',
+/** Nome de cada tabela como o usuário a conhece: [singular, plural]. */
+const NOMES_DAS_TABELAS: Record<string, [string, string]> = {
+  exercises: ['exercício', 'exercícios'],
+  workout_packs: ['pacote', 'pacotes'],
+  workouts: ['ficha', 'fichas'],
+  workout_exercises: ['exercício de ficha', 'exercícios das fichas'],
+  sessions: ['treino', 'treinos'],
+  session_exercises: ['exercício de treino', 'exercícios dos treinos'],
+  session_sets: ['série', 'séries'],
+  personal_records: ['recorde', 'recordes'],
+  user_profile: ['perfil', 'perfil'],
+  body_weight_entries: ['pesagem', 'pesagens'],
+  scheduled_workouts: ['agendamento', 'agendamentos'],
+  app_metadata: ['configuração', 'configurações'],
 };
 
 /**
@@ -757,7 +764,11 @@ function resumoLegivel(summary: ImportSummary): string {
   const partes = Object.entries(summary)
     .filter(([, n]) => (n ?? 0) > 0)
     .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-    .map(([tabela, n]) => `${n} ${NOMES_DAS_TABELAS[tabela] ?? tabela}`);
+    .map(([tabela, n]) => {
+      const nomes = NOMES_DAS_TABELAS[tabela];
+      if (!nomes) return `${n} ${tabela}`;
+      return `${n} ${n === 1 ? nomes[0] : nomes[1]}`;
+    });
 
   if (partes.length === 0) {
     return 'O arquivo não trouxe nada de novo — os dados já estavam todos aqui.';
