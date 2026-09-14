@@ -61,6 +61,19 @@ jobs:
           BASE_URL: /meutreino
         run: npx --no-install expo export --platform web
 
+      # Âncora dos caminhos relativos do index.html.
+      #
+      # Com o 404.html servindo o app em QUALQUER caminho, uma rota aninhada
+      # como /meutreino/treino/3 fazia "./sw.js" e os ícones resolverem para
+      # /meutreino/treino/..., que não existe. O <base> fixa a resolução na
+      # raiz do app, independente da rota aberta.
+      - name: Âncora de base no HTML
+        env:
+          BASE_URL: /meutreino
+        run: |
+          sed -i "s#<head>#<head><base href=\"$BASE_URL/\">#" dist/index.html
+          grep -q "<base href=" dist/index.html || { echo "base nao injetada"; exit 1; }
+
       # O GitHub Pages não tem fallback de SPA: abrir uma rota interna direto
       # pela URL (link compartilhado, favorito, F5 numa aba que está em
       # /exercicios) devolvia a página de erro do GitHub em vez do app.

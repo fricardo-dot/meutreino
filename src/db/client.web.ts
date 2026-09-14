@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 
 import {
@@ -93,10 +94,19 @@ async function createWebDatabase(): Promise<{
   /** false = banco criado agora, do zero. */
   tinhaSnapshot: boolean;
 }> {
-  // Caminho do WASM — relativo à página atual, funciona em subpath sem config.
-  // Em dev: página em / → "./sql-wasm.wasm" resolve pra "/sql-wasm.wasm".
-  // Em prod: página em /meutreino/ → "./sql-wasm.wasm" resolve pra "/meutreino/sql-wasm.wasm".
-  const wasmUrl = './sql-wasm.wasm';
+  // Caminho do WASM, montado a partir do baseUrl do app.
+  //
+  // Era "./sql-wasm.wasm", relativo à PÁGINA — e página varia com a rota. Na
+  // raiz (/meutreino/) resolvia certo, mas abrir /meutreino/treino/3 direto
+  // pela URL resolvia para /meutreino/treino/sql-wasm.wasm e dava 404: o app
+  // inteiro caía na tela de "não foi possível abrir o banco". Isso só ficou
+  // alcançável quando o 404.html passou a servir o app em qualquer caminho.
+  //
+  // `extra.baseUrl` vem do app.config.js: "/meutreino" no build do CI, vazio
+  // em dev. O caminho resulta absoluto a partir da origem e independe da rota.
+  const baseUrl =
+    (Constants.expoConfig?.extra as { baseUrl?: string } | undefined)?.baseUrl ?? '';
+  const wasmUrl = `${baseUrl}/sql-wasm.wasm`;
 
   let SQL: SqlJsStatic;
   try {
