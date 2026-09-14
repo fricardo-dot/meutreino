@@ -132,38 +132,73 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
  *
  * Só escreve onde `notes IS NULL`. Nota que o usuário tenha escrito fica como
  * está — o app não tem o direito de sobrescrever texto dele para instalar o
- * próprio.
+ * próprio. E aqui isso é definitivo: nenhuma tela edita nota de pacote, só
+ * exibe. Escrever no pacote errado seria um texto que o usuário não consegue
+ * tirar.
  *
- * O pacote é localizado pelo NOME, que é o único vínculo disponível: o seed
- * não guardou o id em lugar nenhum. Se o usuário renomeou, nada acontece — e
- * não acontecer é o desfecho certo para um pacote que ele já adotou como seu.
- * O marcador é gravado de qualquer forma: a tentativa é única, não uma busca
- * que fica rodando toda inicialização.
+ * Por isso o pacote NÃO é procurado pelo nome. `workout_packs.name` não tem
+ * índice único, e "Treino Híbrido" é um nome que o usuário pode ter dado ao
+ * pacote dele — o seed não guardou o id em lugar nenhum, então nome seria um
+ * palpite com consequência permanente.
+ *
+ * O que identifica o pacote é o CONTEÚDO: ele tem as quatro fichas do bloco,
+ * cada uma com a mesma divisão e a mesma posição no ciclo. Isso não acerta o
+ * pacote de outra pessoa por coincidência, e continua valendo se o usuário
+ * renomeou o pacote — renomear não é recusar a prescrição.
+ *
+ * Se houver mais de um (o usuário pode ter copiado o bloco ao criar um pacote
+ * novo), todos recebem: cada um É o bloco híbrido, e a corrida vale para
+ * qualquer um deles.
  */
 async function preencherNotasDoHibrido(db: DbTransaction): Promise<void> {
-  const pack = await db.getFirstAsync<{ id: number }>(
-    `SELECT id FROM workout_packs WHERE name = ? ORDER BY id LIMIT 1;`,
-    [PACK_HIBRIDO_NOME],
-  );
-  if (!pack) {
-    return;
-  }
-
-  await db.runAsync(
-    `UPDATE workout_packs SET notes = ? WHERE id = ? AND notes IS NULL;`,
-    [PACK_HIBRIDO_NOTAS, pack.id],
-  );
-
-  for (const ficha of PACK_HIBRIDO_WORKOUTS) {
-    if (ficha.notes === undefined) {
-      continue;
-    }
+  for (const packId of await acharPacotesDoHibrido(db)) {
     await db.runAsync(
-      `UPDATE workouts SET notes = ?
-       WHERE pack_id = ? AND name = ? AND notes IS NULL;`,
-      [ficha.notes, pack.id, ficha.name],
+      `UPDATE workout_packs SET notes = ? WHERE id = ? AND notes IS NULL;`,
+      [PACK_HIBRIDO_NOTAS, packId],
     );
+
+    for (const ficha of PACK_HIBRIDO_WORKOUTS) {
+      if (ficha.notes === undefined) {
+        continue;
+      }
+      // Mesma tripla da identificação: dentro do pacote, o nome sozinho também
+      // não é único.
+      await db.runAsync(
+        `UPDATE workouts SET notes = ?
+          WHERE pack_id = ? AND name = ? AND division = ? AND cycle_order = ?
+            AND notes IS NULL;`,
+        [ficha.notes, packId, ficha.name, ficha.division, ficha.cycle_order ?? null],
+      );
+    }
   }
+}
+
+/**
+ * Os pacotes que contêm o bloco híbrido inteiro.
+ *
+ * "Inteiro" é o critério: as QUATRO fichas, cada uma batendo nome, divisão e
+ * posição no ciclo. Bastar uma ou duas abriria espaço para acertar um pacote
+ * do usuário que por acaso tenha uma ficha "Inferior A".
+ */
+async function acharPacotesDoHibrido(db: DbTransaction): Promise<number[]> {
+  const condicao = PACK_HIBRIDO_WORKOUTS
+    .map(() => '(name = ? AND division = ? AND cycle_order = ?)')
+    .join(' OR ');
+  const params: (string | number | null)[] = [];
+  for (const ficha of PACK_HIBRIDO_WORKOUTS) {
+    params.push(ficha.name, ficha.division, ficha.cycle_order ?? null);
+  }
+  params.push(PACK_HIBRIDO_WORKOUTS.length);
+
+  const linhas = await db.getAllAsync<{ pack_id: number }>(
+    `SELECT pack_id
+       FROM workouts
+      WHERE pack_id IS NOT NULL AND (${condicao})
+      GROUP BY pack_id
+     HAVING COUNT(DISTINCT name) = ?;`,
+    params,
+  );
+  return linhas.map((l) => l.pack_id);
 }
 
 /**
