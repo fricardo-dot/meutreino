@@ -179,7 +179,10 @@ export default function PacotesScreen() {
                   onRenomear={() => setRenomeando(ativo)}
                 />
                 {abertoId === ativo.id ? (
-                  <ListaDeFichas fichas={fichasDoAberto} />
+                  <>
+                    <NotaDoPacote notas={ativo.notes} />
+                    <ListaDeFichas fichas={fichasDoAberto} />
+                  </>
                 ) : null}
               </View>
             ) : null}
@@ -201,7 +204,12 @@ export default function PacotesScreen() {
               onAlternar={() => void alternarAberto(item)}
               onRenomear={() => setRenomeando(item)}
             />
-            {abertoId === item.id ? <ListaDeFichas fichas={fichasDoAberto} /> : null}
+            {abertoId === item.id ? (
+              <>
+                <NotaDoPacote notas={item.notes} />
+                <ListaDeFichas fichas={fichasDoAberto} />
+              </>
+            ) : null}
             <Pressable style={styles.reativarBtn} onPress={() => setParaAtivar(item)}>
               <Text style={styles.reativarTexto}>Voltar a usar</Text>
             </Pressable>
@@ -385,6 +393,21 @@ function CabecalhoDoCard({
 }
 
 /**
+ * Observação do pacote — o que vale para o bloco inteiro, e não para uma ficha.
+ *
+ * No "Treino Híbrido" é o plano de corrida da semana, inclusive o dia que não
+ * tem musculação e portanto não tem ficha para carregar a informação.
+ */
+function NotaDoPacote({ notas }: { notas: string | null }) {
+  if (!notas) return null;
+  return (
+    <View style={styles.notaWrap}>
+      <Text style={styles.notaTexto}>{notas}</Text>
+    </View>
+  );
+}
+
+/**
  * As fichas do pacote aberto.
  *
  * `null` significa "ainda carregando" — diferente de `[]`, que é um pacote de
@@ -549,6 +572,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   renomearTexto: { color: colors.text.secondary, fontSize: 13, fontWeight: '600' },
+  notaWrap: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.background.base,
+    borderRadius: radius.md,
+  },
+  notaTexto: {
+    color: colors.text.secondary,
+    fontSize: typography.size.xs,
+    lineHeight: 18,
+  },
   fichasBox: {
     marginTop: spacing.md,
     borderTopWidth: 1,

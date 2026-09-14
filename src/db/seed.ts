@@ -3,7 +3,11 @@ import type { AppDatabase, DbTransaction } from '@/types/app-database';
 import { appMetadataRepository } from '@/repositories/app-metadata.repository';
 import { SEED_EXERCISES } from './seed-exercises';
 import { SEED_WORKOUTS, type SeedWorkout } from './seed-workouts';
-import { PACK_HIBRIDO_NOME, PACK_HIBRIDO_WORKOUTS } from './seed-pack-hibrido';
+import {
+  PACK_HIBRIDO_NOME,
+  PACK_HIBRIDO_NOTAS,
+  PACK_HIBRIDO_WORKOUTS,
+} from './seed-pack-hibrido';
 
 /**
  * Chave usada pelo teste de persistência da Fase 1.
@@ -84,7 +88,12 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
   const packSeeded = await appMetadataRepository.get(db, SEED_PACK_HIBRIDO_KEY);
   if (packSeeded === null) {
     await db.withTransactionAsync(async (tx) => {
-      await seedPackArquivado(tx, PACK_HIBRIDO_NOME, PACK_HIBRIDO_WORKOUTS);
+      await seedPackArquivado(
+        tx,
+        PACK_HIBRIDO_NOME,
+        PACK_HIBRIDO_NOTAS,
+        PACK_HIBRIDO_WORKOUTS,
+      );
       await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_KEY, '1');
     });
   }
@@ -100,11 +109,12 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
 async function seedPackArquivado(
   db: DbTransaction,
   nome: string,
+  notas: string | null,
   fichas: ReadonlyArray<SeedWorkout>,
 ): Promise<void> {
   const pack = await db.runAsync(
-    `INSERT INTO workout_packs (name, is_active) VALUES (?, 0);`,
-    [nome],
+    `INSERT INTO workout_packs (name, notes, is_active) VALUES (?, ?, 0);`,
+    [nome, notas],
   );
   await seedWorkouts(db, fichas, pack.lastInsertRowId);
 }
@@ -125,14 +135,25 @@ async function seedWorkouts(
     // filtra pelo pacote ativo. Sem `packId` explícito, vai para o ativo.
     const result = packId !== undefined
       ? await db.runAsync(
-          `INSERT INTO workouts (name, division, cycle_order, pack_id)
-           VALUES (?, ?, ?, ?);`,
-          [workout.name, workout.division, workout.cycle_order ?? null, packId],
+          `INSERT INTO workouts (name, division, notes, cycle_order, pack_id)
+           VALUES (?, ?, ?, ?, ?);`,
+          [
+            workout.name,
+            workout.division,
+            workout.notes ?? null,
+            workout.cycle_order ?? null,
+            packId,
+          ],
         )
       : await db.runAsync(
-          `INSERT INTO workouts (name, division, cycle_order, pack_id)
-           VALUES (?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
-          [workout.name, workout.division, workout.cycle_order ?? null],
+          `INSERT INTO workouts (name, division, notes, cycle_order, pack_id)
+           VALUES (?, ?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
+          [
+            workout.name,
+            workout.division,
+            workout.notes ?? null,
+            workout.cycle_order ?? null,
+          ],
         );
     const workoutId = result.lastInsertRowId as number;
 

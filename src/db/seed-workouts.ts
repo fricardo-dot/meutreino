@@ -23,6 +23,13 @@ export interface SeedWorkoutItem {
 export interface SeedWorkout {
   name: string;
   division: string;
+  /**
+   * Observação da ficha, exibida ao abrir e durante o treino.
+   *
+   * É onde mora o que a ficha prescreve mas o app não registra — a corrida
+   * que antecede a musculação, por exemplo.
+   */
+  notes?: string;
   /** Posição no ciclo de treinos (1, 2, 3...). NULL = não participa do ciclo. */
   cycle_order: number | null;
   items: SeedWorkoutItem[];

@@ -18,6 +18,7 @@ import { StepperInput } from '@/components/StepperInput';
 import { useRestTimer } from '@/hooks/useRestTimer';
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository } from '@/repositories/sessions.repository';
+import { workoutsRepository } from '@/repositories/workouts.repository';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
@@ -65,6 +66,8 @@ export default function RegistrarSessaoScreen() {
   const { db, status } = useDatabase();
 
   const [session, setSession] = useState<SessionRow | null>(null);
+  /** Observação da ficha de origem: a corrida prescrita para o dia. */
+  const [fichaNotes, setFichaNotes] = useState<string | null>(null);
   const [exercises, setExercises] = useState<SessionExerciseWithPlan[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<number, SessionSetRow[]>>({});
   const [loading, setLoading] = useState(true);
@@ -78,6 +81,13 @@ export default function RegistrarSessaoScreen() {
     try {
       const s = await sessionsRepository.getById(db, sessionId);
       setSession(s);
+      // A sessão guarda só o NOME da ficha (snapshot). A observação vem da
+      // ficha de origem, que continua existindo mesmo em pacote arquivado.
+      setFichaNotes(
+        s?.workout_id != null
+          ? ((await workoutsRepository.getById(db, s.workout_id))?.notes ?? null)
+          : null,
+      );
       if (s) {
         const exs = await db.getAllAsync<SessionExerciseWithPlan>(
           `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
@@ -181,6 +191,13 @@ export default function RegistrarSessaoScreen() {
         </View>
         <View style={{ width: 32 }} />
       </View>
+
+      {/* Observação da ficha — a corrida que antecede a musculação mora aqui. */}
+      {fichaNotes ? (
+        <View style={styles.notaWrap}>
+          <Text style={styles.notaTexto}>{fichaNotes}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={exercises}
@@ -503,6 +520,21 @@ function ExerciseBlock({
 }
 
 const styles = StyleSheet.create({
+  notaWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.accent.soft,
+    borderWidth: 1,
+    borderColor: colors.accent.borderSoft,
+    borderRadius: radius.lg,
+  },
+  notaTexto: {
+    color: colors.text.primary,
+    fontSize: typography.size.sm,
+    lineHeight: 20,
+  },
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {

@@ -150,6 +150,13 @@ export default function TreinoDetalheScreen() {
         ) : null}
       </View>
 
+      {/* Observação da ficha — a corrida que antecede a musculação mora aqui. */}
+      {workout?.notes ? (
+        <View style={styles.notaWrap}>
+          <Text style={styles.notaTexto}>{workout.notes}</Text>
+        </View>
+      ) : null}
+
       {/* Ordem no ciclo de treinos */}
       <View style={styles.cycleWrap}>
         <Text style={styles.cycleLabel}>ORDEM NO CICLO</Text>
@@ -313,6 +320,21 @@ function ExercisePicker({
 }
 
 const styles = StyleSheet.create({
+  notaWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.accent.soft,
+    borderWidth: 1,
+    borderColor: colors.accent.borderSoft,
+    borderRadius: radius.lg,
+  },
+  notaTexto: {
+    color: colors.text.primary,
+    fontSize: typography.size.sm,
+    lineHeight: 20,
+  },
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: { paddingTop: spacing['5xl'], paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
