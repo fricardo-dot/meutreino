@@ -2,7 +2,8 @@ import type { AppDatabase, DbTransaction } from '@/types/app-database';
 
 import { appMetadataRepository } from '@/repositories/app-metadata.repository';
 import { SEED_EXERCISES } from './seed-exercises';
-import { SEED_WORKOUTS } from './seed-workouts';
+import { SEED_WORKOUTS, type SeedWorkout } from './seed-workouts';
+import { PACK_HIBRIDO_NOME, PACK_HIBRIDO_WORKOUTS } from './seed-pack-hibrido';
 
 /**
  * Chave usada pelo teste de persistência da Fase 1.
@@ -15,6 +16,14 @@ export const SQLITE_TEST_VALUE = 12.5;
  * Evita recriar fichas (e duplicar) a cada inicialização.
  */
 const SEED_WORKOUTS_KEY = 'seed_workouts_v1';
+
+/**
+ * Marca que o pacote "Treino Híbrido" já foi criado.
+ *
+ * Mesma mecânica do marcador das fichas iniciais: sem ele, o pacote seria
+ * recriado a cada abertura, já que `workout_packs` não tem unicidade por nome.
+ */
+const SEED_PACK_HIBRIDO_KEY = 'seed_pack_hibrido_v1';
 
 /**
  * Seed inicial do banco.
@@ -62,10 +71,42 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
   const workoutsSeeded = await appMetadataRepository.get(db, SEED_WORKOUTS_KEY);
   if (workoutsSeeded === null) {
     await db.withTransactionAsync(async (tx) => {
-      await seedWorkouts(tx);
+      await seedWorkouts(tx, SEED_WORKOUTS);
       await appMetadataRepository.set(tx, SEED_WORKOUTS_KEY, '1');
     });
   }
+
+  // 4. Pacote "Treino Híbrido" — também só UMA vez, e também tudo ou nada.
+  //
+  // Entra ARQUIVADO: trocar o pacote em uso limpa a programação da semana, e
+  // essa decisão é do usuário, não de uma atualização do app chegando sozinha.
+  // Para começar o bloco: Treinos → Trocar → Voltar a usar.
+  const packSeeded = await appMetadataRepository.get(db, SEED_PACK_HIBRIDO_KEY);
+  if (packSeeded === null) {
+    await db.withTransactionAsync(async (tx) => {
+      await seedPackArquivado(tx, PACK_HIBRIDO_NOME, PACK_HIBRIDO_WORKOUTS);
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_KEY, '1');
+    });
+  }
+}
+
+/**
+ * Cria um pacote arquivado com as fichas dadas.
+ *
+ * `is_active = 0` de propósito: o índice único parcial recusaria um segundo
+ * ativo, e mesmo que aceitasse, trocar o bloco de treino do usuário sem ele
+ * pedir seria errado.
+ */
+async function seedPackArquivado(
+  db: DbTransaction,
+  nome: string,
+  fichas: ReadonlyArray<SeedWorkout>,
+): Promise<void> {
+  const pack = await db.runAsync(
+    `INSERT INTO workout_packs (name, is_active) VALUES (?, 0);`,
+    [nome],
+  );
+  await seedWorkouts(db, fichas, pack.lastInsertRowId);
 }
 
 /**
@@ -74,16 +115,25 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
  * Se um exercício da ficha não existir no banco (ex: foi arquivado), ele é
  * IGNORADO — a ficha é criada sem ele. Não quebra o seed.
  */
-async function seedWorkouts(db: DbTransaction): Promise<void> {
-  for (const workout of SEED_WORKOUTS) {
-    // Cria a ficha.
-    // A ficha nasce no pacote ativo, criado pela migration v9. Sem o pack_id
-    // ela ficaria órfã e não apareceria em tela nenhuma.
-    const result = await db.runAsync(
-      `INSERT INTO workouts (name, division, cycle_order, pack_id)
-       VALUES (?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
-      [workout.name, workout.division, workout.cycle_order ?? null],
-    );
+async function seedWorkouts(
+  db: DbTransaction,
+  fichas: ReadonlyArray<SeedWorkout>,
+  packId?: number,
+): Promise<void> {
+  for (const workout of fichas) {
+    // Ficha sem pacote fica órfã e não aparece em tela nenhuma, porque a UI
+    // filtra pelo pacote ativo. Sem `packId` explícito, vai para o ativo.
+    const result = packId !== undefined
+      ? await db.runAsync(
+          `INSERT INTO workouts (name, division, cycle_order, pack_id)
+           VALUES (?, ?, ?, ?);`,
+          [workout.name, workout.division, workout.cycle_order ?? null, packId],
+        )
+      : await db.runAsync(
+          `INSERT INTO workouts (name, division, cycle_order, pack_id)
+           VALUES (?, ?, ?, (SELECT id FROM workout_packs WHERE is_active = 1));`,
+          [workout.name, workout.division, workout.cycle_order ?? null],
+        );
     const workoutId = result.lastInsertRowId as number;
 
     // Adiciona cada exercício da ficha.

@@ -63,4 +63,21 @@ export const SEED_EXERCISES: ReadonlyArray<
 
   // ── Core ───────────────────────────────────────────────────────────────
   { name: 'Abdominal na polia', muscle_group: 'core', equipment: 'cabo', difficulty: 'iniciante' },
+  // ── Adicionados para o pacote "Treino Híbrido" ─────────────────────────
+  // Variações unilaterais e de implemento entram como exercícios PRÓPRIOS, e
+  // não como observação numa ficha: a carga de um leg press unilateral não é
+  // comparável à do bilateral, e recorde é por exercício. Misturar as duas
+  // numa linha só estragaria o histórico de PR.
+  { name: 'Hack squat', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'intermediário', secondary_muscles: 'glúteos' },
+  { name: 'Leg press horizontal unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'intermediário', secondary_muscles: 'glúteos' },
+  { name: 'Extensora unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'iniciante' },
+  { name: 'Flexora unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'iniciante' },
+  { name: 'Búlgaro no Smith', muscle_group: 'pernas', equipment: 'smith', difficulty: 'intermediário', secondary_muscles: 'glúteos, quadríceps' },
+  { name: 'Panturrilha em pé unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'iniciante' },
+  { name: 'Panturrilha sentada unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'iniciante' },
+  { name: 'Remada máquina com apoio', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
+  { name: 'Remada baixa neutra', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
+  { name: 'Crucifixo inverso', muscle_group: 'ombros', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'deltoide posterior, trapézio' },
+  { name: 'Rosca inclinada', muscle_group: 'braços', equipment: 'halteres', difficulty: 'intermediário' },
+  { name: 'Tríceps francês na polia', muscle_group: 'braços', equipment: 'cabo', difficulty: 'iniciante' },
 ];
