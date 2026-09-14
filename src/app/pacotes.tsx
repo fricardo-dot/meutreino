@@ -94,10 +94,17 @@ export default function PacotesScreen() {
     setFichasDoAberto(null);
     if (!db) return;
     try {
-      setFichasDoAberto(await workoutsRepository.listByPack(db, pack.id));
+      const fichas = await workoutsRepository.listByPack(db, pack.id);
+      // Abrir A e, antes da resposta, abrir B: a consulta de A pode voltar
+      // depois e pintar as fichas de A dentro do card de B. Só aplica se este
+      // ainda for o card aberto.
+      setAbertoId((atual) => {
+        if (atual === pack.id) setFichasDoAberto(fichas);
+        return atual;
+      });
     } catch (error) {
-      setAbertoId(null);
       setActionError(mensagemDeErro(error));
+      setAbertoId((atual) => (atual === pack.id ? null : atual));
     }
   }
 
@@ -229,8 +236,9 @@ export default function PacotesScreen() {
         title="Voltar a usar este pacote?"
         message={
           `"${paraAtivar?.name ?? ''}" volta a ser o pacote em uso e ` +
-          `"${ativo?.name ?? ''}" vai para os arquivados. A programação da semana ` +
-          `é limpa, porque ela aponta para as fichas do pacote que sai. Nada é apagado.`
+          `"${ativo?.name ?? ''}" vai para os arquivados. Fichas, treinos feitos e ` +
+          `recordes continuam guardados. O que é apagado é a programação desta ` +
+          `semana em diante, que aponta para as fichas do pacote que sai.`
         }
         confirmText="Trocar"
         cancelText="Cancelar"

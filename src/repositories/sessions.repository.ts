@@ -42,6 +42,25 @@ export const sessionsRepository = {
     let createdSessionId = 0;
 
     await db.withTransactionAsync(async (tx) => {
+      // A ficha precisa ser do pacote EM USO.
+      //
+      // `getById` acha ficha de qualquer pacote — o histórico depende disso —,
+      // então uma tela aberta antes de uma troca de pacote ainda conseguia
+      // iniciar treino de um bloco arquivado. A sessão nasceria fora do ciclo
+      // atual e o calendário ficaria incoerente.
+      const noPacoteAtivo = await tx.getFirstAsync<{ id: number }>(
+        `SELECT id FROM workouts
+          WHERE id = ? AND is_active = 1
+            AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1);`,
+        [workoutId],
+      );
+      if (!noPacoteAtivo) {
+        throw new DomainError(
+          'WORKOUT_NOT_IN_ACTIVE_PACK',
+          'Esta ficha é de um pacote arquivado. Abra a aba Treinos para ver as fichas em uso.',
+        );
+      }
+
       // Template da ficha — precisa estar dentro da transação para consistência.
       const template = await tx.getAllAsync<{
         id: number;
@@ -216,6 +235,25 @@ export const sessionsRepository = {
     const startedAt = dateISO + ' 12:00:00';
 
     await db.withTransactionAsync(async (tx) => {
+      // A ficha precisa ser do pacote EM USO.
+      //
+      // `getById` acha ficha de qualquer pacote — o histórico depende disso —,
+      // então uma tela aberta antes de uma troca de pacote ainda conseguia
+      // iniciar treino de um bloco arquivado. A sessão nasceria fora do ciclo
+      // atual e o calendário ficaria incoerente.
+      const noPacoteAtivo = await tx.getFirstAsync<{ id: number }>(
+        `SELECT id FROM workouts
+          WHERE id = ? AND is_active = 1
+            AND pack_id = (SELECT id FROM workout_packs WHERE is_active = 1);`,
+        [workoutId],
+      );
+      if (!noPacoteAtivo) {
+        throw new DomainError(
+          'WORKOUT_NOT_IN_ACTIVE_PACK',
+          'Esta ficha é de um pacote arquivado. Abra a aba Treinos para ver as fichas em uso.',
+        );
+      }
+
       const template = await tx.getAllAsync<{
         id: number;
         exercise_id: number;

@@ -115,10 +115,18 @@ export const workoutPacksRepository = {
       if (atual) {
         await arquivar(tx, atual.id);
       }
-      await tx.runAsync(
+      const r = await tx.runAsync(
         `UPDATE workout_packs SET is_active = 1, archived_at = NULL WHERE id = ?;`,
         [packId],
       );
+
+      // O índice único garante NO MÁXIMO um ativo; não garante PELO MENOS um.
+      // Se o id não existir, o UPDATE altera zero linhas sem erro e a
+      // transação confirmaria com o atual já arquivado e nenhum no lugar —
+      // aba Treinos vazia e ficha nova nascendo órfã. Lançar aqui desfaz tudo.
+      if (r.changes !== 1) {
+        throw new Error('Este pacote não existe mais. Recarregue a tela.');
+      }
 
       await limparProgramacaoFutura(tx);
     });

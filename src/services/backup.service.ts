@@ -1,4 +1,8 @@
-import type { AppDatabase, SqlParameter } from '@/types/app-database';
+import type {
+  AppDatabase,
+  DbTransaction,
+  SqlParameter,
+} from '@/types/app-database';
 
 /**
  * Versão do formato de backup.
@@ -141,6 +145,18 @@ export const backupService = {
 
         const pkCols = await getPrimaryKey(db, table);
 
+        // Os pacotes do arquivo trazem consigo qual estava ativo. Se o aparelho
+        // local também tem um ativo com OUTRO id, os dois coexistiriam por um
+        // instante e o índice único derrubaria a importação inteira — falha
+        // garantida ao restaurar num aparelho que já foi usado, que é
+        // exatamente o caso de trocar de celular.
+        //
+        // Zerar antes deixa a decisão com o arquivo; a reconciliação depois do
+        // laço garante que sobre exatamente um ativo.
+        if (table === 'workout_packs' && rows.length > 0) {
+          await tx.runAsync('UPDATE workout_packs SET is_active = 0;');
+        }
+
         let imported = 0;
         for (const row of rows) {
           // Linha que não é objeto (arquivo corrompido ou de outra origem)
@@ -205,6 +221,8 @@ export const backupService = {
 
         summary[table] = imported;
       }
+
+      await reconciliarPacotes(tx);
     });
 
     return summary;
@@ -218,6 +236,50 @@ export const backupService = {
  * Nota: PRAGMA não aceita bind de parâmetro; `table` vem de BACKUP_TABLES
  * (lista fixa), então a interpolação é segura.
  */
+/**
+ * Deixa o estado dos pacotes consistente depois de importar.
+ *
+ * Duas situações que o arquivo pode criar:
+ *
+ *  - NENHUM pacote ativo — o arquivo trouxe pacotes todos arquivados, ou
+ *    trouxe pacotes e nenhum marcado como ativo. Sem um ativo, a aba Treinos
+ *    fica vazia e ficha nova nasce órfã.
+ *
+ *  - Fichas com `pack_id` nulo — backup ANTIGO, gerado antes dos pacotes
+ *    existirem. A ficha entra no banco mas não aparece em tela nenhuma,
+ *    porque toda consulta da UI filtra pelo pacote ativo. É o mesmo backfill
+ *    que a migration v9 faz, aplicado ao que acabou de chegar.
+ */
+async function reconciliarPacotes(tx: DbTransaction): Promise<void> {
+  const ativo = await tx.getFirstAsync<{ id: number }>(
+    'SELECT id FROM workout_packs WHERE is_active = 1 LIMIT 1;',
+  );
+
+  if (!ativo) {
+    // Sem ativo: promove o mais recente. Se nem isso existir, o banco não tem
+    // pacote nenhum — cria um para as fichas terem onde morar.
+    const candidato = await tx.getFirstAsync<{ id: number }>(
+      'SELECT id FROM workout_packs ORDER BY archived_at DESC, id DESC LIMIT 1;',
+    );
+    if (candidato) {
+      await tx.runAsync(
+        'UPDATE workout_packs SET is_active = 1, archived_at = NULL WHERE id = ?;',
+        [candidato.id],
+      );
+    } else {
+      await tx.runAsync(
+        "INSERT INTO workout_packs (name, is_active) VALUES ('Meu treino', 1);",
+      );
+    }
+  }
+
+  await tx.runAsync(
+    `UPDATE workouts
+        SET pack_id = (SELECT id FROM workout_packs WHERE is_active = 1)
+      WHERE pack_id IS NULL;`,
+  );
+}
+
 async function getTableColumns(
   db: AppDatabase,
   table: BackupTableName,
