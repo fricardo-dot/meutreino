@@ -99,6 +99,15 @@ export default function CalendarioScreen() {
       setWeekStatus(ws);
       setMonthLabel(calendarService.getMonthLabel(weekStart));
       setPacote(await workoutPacksRepository.getActive(db));
+      // As fichas dos seletores ("Escolher treino", "Trocar treino") vêm daqui.
+      //
+      // Ficavam num efeito à parte, com dependências [db, status], e eram
+      // carregadas UMA vez. Trocar de pacote não mexe em nenhuma das duas: ao
+      // voltar para o calendário, a consulta até filtrava pelo pacote ativo
+      // certo, mas ninguém a executava de novo — e o seletor continuava
+      // oferecendo as fichas do pacote anterior. Dentro do `load` elas
+      // acompanham o foco da tela.
+      setCycleWorkouts(await workoutsRepository.listCycleWorkouts(db));
       // Calcula continue/restart (nomes pro modal) — só interessa pra semana atual.
       if (isCurrentWeek(weekStart)) {
         const lastCompleted = await sessionsRepository.getLastCompleted(db);
@@ -134,15 +143,6 @@ export default function CalendarioScreen() {
       setLoading(false);
     }
   }, [db, status, weekStart]);
-
-  // Carrega a lista de workouts do ciclo uma vez (pickers).
-  useEffect(() => {
-    if (status !== 'ready' || !db) return;
-    void (async () => {
-      const list = await workoutsRepository.listCycleWorkouts(db);
-      setCycleWorkouts(list);
-    })();
-  }, [db, status]);
 
   useFocusEffect(
     useCallback(() => {
@@ -865,8 +865,8 @@ function NewWeekModal({
           </Pressable>
 
           <Text style={styles.newWeekFooterHint}>
-            Distribui automaticamente o ciclo de Seg-Sex e deixa Sáb-Dom como
-            descanso.
+            Espalha o ciclo entre segunda e sexta, com folga entre os treinos.
+            Sáb-Dom ficam como descanso; dias úteis que sobrarem ficam livres.
           </Text>
 
           <Pressable style={styles.pickerManualBtn} onPress={onManual}>

@@ -7,6 +7,7 @@ import {
   TARGET_DB_VERSION,
 } from './migrations';
 import { loadSnapshot, saveSnapshot } from './web-storage';
+import { pedirPersistencia } from './storage-persistence';
 import type {
   AppDatabase,
   DbTransaction,
@@ -46,6 +47,11 @@ let initPromise: Promise<AppDatabase> | null = null;
 export async function getDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
   if (initPromise) return initPromise;
+
+  // Sem `await` de propósito: o banco deste app é a única cópia do histórico,
+  // e pedir ao navegador que não o descarte é importante — mas não a ponto de
+  // atrasar a abertura do app, nem de impedi-la se o pedido falhar.
+  void pedirPersistencia();
 
   initPromise = (async () => {
     const { adapter, state, tinhaSnapshot } = await createWebDatabase();

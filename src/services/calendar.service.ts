@@ -216,8 +216,15 @@ export const calendarService = {
   ): Promise<void> {
     const weekStartISO = toISODate(weekStart);
     const sequence = await trainingCycleService.getCycleSequence(db, startWorkoutId);
-    await scheduledWorkoutsRepository.autoFillWeek(db, weekStartISO, sequence);
+    await scheduledWorkoutsRepository.autoFillWeek(
+      db,
+      weekStartISO,
+      distribuirNaSemana(sequence),
+    );
   },
+
+  /** Exposto para teste e para quem quiser só saber onde cada treino cairia. */
+  distribuirNaSemana,
 
   /**
    * Retorna a segunda-feira da semana de uma data (ou de hoje).
@@ -260,6 +267,52 @@ export const calendarService = {
     return Math.floor(dias / 7) + 1;
   },
 };
+
+/** Um treino do ciclo e o dia da semana (0 = segunda) em que ele cai. */
+export interface DiaProgramado {
+  dayOfWeek: number;
+  workoutId: number;
+}
+
+/**
+ * Espalha os treinos do ciclo de segunda a sexta, com folga entre eles.
+ *
+ * Antes eles eram enfileirados em dias consecutivos a partir da segunda: um
+ * ciclo de quatro fichas ocupava segunda a quinta e deixava a sexta vazia,
+ * treinando quatro dias seguidos sem descanso no meio. Nenhum programa de
+ * musculação é montado assim, e num bloco híbrido isso ainda atropela o dia
+ * reservado para a corrida longa.
+ *
+ * A regra é ancorar o primeiro na segunda e o último na sexta, espaçando o
+ * resto por igual. Dá exatamente as divisões usuais:
+ *
+ *   1 treino  → Seg
+ *   2 treinos → Seg, Sex
+ *   3 treinos → Seg, Qua, Sex
+ *   4 treinos → Seg, Ter, Qui, Sex
+ *   5 treinos → Seg a Sex
+ *
+ * Os dias que sobram no meio ficam SEM programação, e não marcados como
+ * descanso: para o app são dias livres, e o que o usuário faz neles — correr,
+ * descansar, outra coisa — ele é quem sabe. Dizer "descanso" num dia em que o
+ * pacote manda correr 5 km seria inventar.
+ *
+ * Ciclo com mais de cinco fichas continua limitado a cinco por semana; as
+ * demais entram nas semanas seguintes, porque a sequência continua de onde
+ * parou.
+ */
+function distribuirNaSemana(workoutIds: number[]): DiaProgramado[] {
+  const DIAS_UTEIS = 5;
+  const ids = workoutIds.filter((id) => id != null).slice(0, DIAS_UTEIS);
+  if (ids.length === 0) return [];
+  if (ids.length === 1) return [{ dayOfWeek: 0, workoutId: ids[0] }];
+
+  const ultimo = DIAS_UTEIS - 1;
+  return ids.map((workoutId, i) => ({
+    dayOfWeek: Math.round((i * ultimo) / (ids.length - 1)),
+    workoutId,
+  }));
+}
 
 // ── Helpers de data (sem libs externas) ─────────────────────────────────
 

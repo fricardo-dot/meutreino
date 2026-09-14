@@ -23,6 +23,11 @@ import { workoutPacksRepository } from '@/repositories/workout-packs.repository'
 import { userProfileRepository } from '@/repositories/user-profile.repository';
 import { backupService, type BackupInfo, type ImportSummary }
   from '@/services/backup.service';
+import {
+  lerEstadoDoArmazenamento,
+  pedirPersistencia,
+  type EstadoDoArmazenamento,
+} from '@/db/storage-persistence';
 import { generatePackReport } from '@/services/report.service';
 import { statsService, type GeneralStats, type MuscleGroupVolume } from '@/services/stats.service';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -52,6 +57,14 @@ export default function PerfilScreen() {
   const [weightHistory, setWeightHistory] = useState<BodyWeightEntryRow[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importData, setImportData] = useState<string | null>(null);
+  /**
+   * Durabilidade do armazenamento do navegador.
+   *
+   * Fica à vista porque é a única coisa nesta tela que o app não controla: o
+   * banco é a única cópia do histórico, e quem decide se ele sobrevive a uma
+   * faxina de espaço é o navegador.
+   */
+  const [armazenamento, setArmazenamento] = useState<EstadoDoArmazenamento | null>(null);
   /** Cabeçalho do arquivo escolhido, para a confirmação não ser às cegas. */
   const [importInfo, setImportInfo] = useState<BackupInfo | null>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
@@ -91,6 +104,22 @@ export default function PerfilScreen() {
       setLoading(false);
     }
   }, [db, status]);
+
+  /** Relê o estado do armazenamento (depois de carregar a tela e de pedir). */
+  const carregarArmazenamento = useCallback(async () => {
+    setArmazenamento(await lerEstadoDoArmazenamento());
+  }, []);
+
+  useEffect(() => {
+    void carregarArmazenamento();
+  }, [carregarArmazenamento]);
+
+  async function handleProteger() {
+    await pedirPersistencia();
+    // Relê em vez de confiar no retorno: quem decide é o navegador, e o que
+    // vale mostrar é o estado real depois da decisão dele.
+    await carregarArmazenamento();
+  }
 
   async function handleExport() {
     if (!db) return;
@@ -374,6 +403,26 @@ export default function PerfilScreen() {
           {generatingReport ? 'Gerando...' : '📋 Gerar relatório'}
         </Text>
       </Pressable>
+
+      {/* Durabilidade do armazenamento — só o web tem essa incerteza. */}
+      {armazenamento && armazenamento.persistente !== null ? (
+        <>
+          <SectionTitle>Armazenamento</SectionTitle>
+          <Text style={styles.reportHint}>
+            {armazenamento.persistente
+              ? 'Protegido. O navegador se comprometeu a não apagar seus treinos ' +
+                'para liberar espaço — só saem se você mandar.'
+              : 'Não protegido. Se o aparelho ficar sem espaço, o navegador pode ' +
+                'apagar os treinos deste app sem avisar.'}
+            {espacoEmTexto(armazenamento)}
+          </Text>
+          {!armazenamento.persistente ? (
+            <Pressable style={styles.exportBtn} onPress={handleProteger}>
+              <Text style={styles.exportBtnText}>Proteger meus dados</Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : null}
 
       {/* Backup dos dados */}
       <SectionTitle>Backup dos dados</SectionTitle>
@@ -736,6 +785,20 @@ function dataHoraLegivel(iso: string): string {
   const hora = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${dia}/${mes}/${d.getFullYear()} às ${hora}:${min}`;
+}
+
+/**
+ * " Usando 2,3 MB." — só aparece quando o navegador informa.
+ *
+ * A cota NÃO é mostrada de propósito: os navegadores devolvem ali um número
+ * enorme e teórico (uma fração do disco livre), que passaria a impressão de
+ * garantia justamente onde não há nenhuma.
+ */
+function espacoEmTexto(e: EstadoDoArmazenamento): string {
+  if (e.usadoBytes === null) return '';
+  const mb = e.usadoBytes / (1024 * 1024);
+  const texto = mb < 10 ? mb.toFixed(1) : String(Math.round(mb));
+  return ` Usando ${texto.replace('.', ',')} MB.`;
 }
 
 /** Nome de cada tabela como o usuário a conhece: [singular, plural]. */

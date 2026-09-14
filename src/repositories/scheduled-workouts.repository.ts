@@ -132,18 +132,18 @@ export const scheduledWorkoutsRepository = {
   async autoFillWeek(
     db: AppDatabase,
     weekStartISO: string,
-    startWorkoutIds: number[],
+    dias: { dayOfWeek: number; workoutId: number }[],
   ): Promise<void> {
     await this.clearWeek(db, weekStartISO);
 
-    // Dias 0-4 (Seg-Sex): treinos do ciclo (até 5).
-    for (let i = 0; i < Math.min(5, startWorkoutIds.length); i++) {
-      if (startWorkoutIds[i] != null) {
-        await this.scheduleWorkout(db, weekStartISO, i, startWorkoutIds[i]);
-      }
+    // Em que dia cada treino cai é regra de negócio e mora no
+    // `calendarService`; aqui só se grava o que ele decidiu.
+    for (const dia of dias) {
+      await this.scheduleWorkout(db, weekStartISO, dia.dayOfWeek, dia.workoutId);
     }
 
-    // Dias 5-6 (Sáb-Dom): descanso.
+    // Sáb-Dom: descanso. Os dias úteis que ficaram sem treino NÃO viram
+    // descanso — são dias livres, e o app não sabe o que o usuário faz neles.
     await this.scheduleRestDay(db, weekStartISO, 5);
     await this.scheduleRestDay(db, weekStartISO, 6);
   },
