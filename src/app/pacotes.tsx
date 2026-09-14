@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -17,6 +17,10 @@ import {
   workoutPacksRepository,
   type WorkoutPackSummary,
 } from '@/repositories/workout-packs.repository';
+import {
+  workoutsRepository,
+  type WorkoutWithCount,
+} from '@/repositories/workouts.repository';
 import { mensagemDeErro } from '@/types/errors.helpers';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -39,6 +43,16 @@ export default function PacotesScreen() {
 
   const [criando, setCriando] = useState(false);
   const [paraAtivar, setParaAtivar] = useState<WorkoutPackSummary | null>(null);
+  const [renomeando, setRenomeando] = useState<WorkoutPackSummary | null>(null);
+
+  /**
+   * Fichas do pacote aberto, carregadas sob demanda.
+   *
+   * Só busca quando o usuário abre um card: a lista de pacotes não precisa
+   * dessas linhas, e um usuário com muitos blocos passados pagaria por todas.
+   */
+  const [abertoId, setAbertoId] = useState<number | null>(null);
+  const [fichasDoAberto, setFichasDoAberto] = useState<WorkoutWithCount[] | null>(null);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -66,6 +80,36 @@ export default function PacotesScreen() {
       await load();
     } catch (error) {
       setCriando(false);
+      setActionError(mensagemDeErro(error));
+    }
+  }
+
+  async function alternarAberto(pack: WorkoutPackSummary) {
+    if (abertoId === pack.id) {
+      setAbertoId(null);
+      setFichasDoAberto(null);
+      return;
+    }
+    setAbertoId(pack.id);
+    setFichasDoAberto(null);
+    if (!db) return;
+    try {
+      setFichasDoAberto(await workoutsRepository.listByPack(db, pack.id));
+    } catch (error) {
+      setAbertoId(null);
+      setActionError(mensagemDeErro(error));
+    }
+  }
+
+  async function renomear(nome: string) {
+    if (!db || !renomeando) return;
+    const alvo = renomeando;
+    try {
+      await workoutPacksRepository.rename(db, alvo.id, nome);
+      setRenomeando(null);
+      await load();
+    } catch (error) {
+      setRenomeando(null);
       setActionError(mensagemDeErro(error));
     }
   }
@@ -121,10 +165,15 @@ export default function PacotesScreen() {
                 <View style={styles.badgeAtivo}>
                   <Text style={styles.badgeAtivoTexto}>EM USO</Text>
                 </View>
-                <Text style={styles.cardTitulo}>{ativo.name}</Text>
-                <Text style={styles.cardSub}>
-                  {ativo.workout_count} {ativo.workout_count === 1 ? 'ficha' : 'fichas'}
-                </Text>
+                <CabecalhoDoCard
+                  pack={ativo}
+                  aberto={abertoId === ativo.id}
+                  onAlternar={() => void alternarAberto(ativo)}
+                  onRenomear={() => setRenomeando(ativo)}
+                />
+                {abertoId === ativo.id ? (
+                  <ListaDeFichas fichas={fichasDoAberto} />
+                ) : null}
               </View>
             ) : null}
 
@@ -139,11 +188,13 @@ export default function PacotesScreen() {
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.cardTitulo}>{item.name}</Text>
-            <Text style={styles.cardSub}>
-              {item.workout_count} {item.workout_count === 1 ? 'ficha' : 'fichas'}
-              {item.archived_at ? ` · arquivado em ${formatarData(item.archived_at)}` : ''}
-            </Text>
+            <CabecalhoDoCard
+              pack={item}
+              aberto={abertoId === item.id}
+              onAlternar={() => void alternarAberto(item)}
+              onRenomear={() => setRenomeando(item)}
+            />
+            {abertoId === item.id ? <ListaDeFichas fichas={fichasDoAberto} /> : null}
             <Pressable style={styles.reativarBtn} onPress={() => setParaAtivar(item)}>
               <Text style={styles.reativarTexto}>Voltar a usar</Text>
             </Pressable>
@@ -165,6 +216,12 @@ export default function PacotesScreen() {
         nomeAtual={ativo?.name ?? ''}
         onClose={() => setCriando(false)}
         onCriar={criarPacote}
+      />
+
+      <RenomearModal
+        pack={renomeando}
+        onClose={() => setRenomeando(null)}
+        onSalvar={renomear}
       />
 
       <ConfirmDialog
@@ -283,6 +340,149 @@ function NovoPacoteModal({
   );
 }
 
+/**
+ * Linha de topo do card: nome, resumo, e os dois controles.
+ *
+ * O nome inteiro é a área de toque para abrir/fechar — alvo grande, que é o
+ * que se quer no celular. Renomear fica num botão separado para não competir
+ * com esse toque.
+ */
+function CabecalhoDoCard({
+  pack,
+  aberto,
+  onAlternar,
+  onRenomear,
+}: {
+  pack: WorkoutPackSummary;
+  aberto: boolean;
+  onAlternar: () => void;
+  onRenomear: () => void;
+}) {
+  return (
+    <View style={styles.cardTopo}>
+      <Pressable style={{ flex: 1 }} onPress={onAlternar}>
+        <Text style={styles.cardTitulo}>{pack.name}</Text>
+        <Text style={styles.cardSub}>
+          {pack.workout_count} {pack.workout_count === 1 ? 'ficha' : 'fichas'}
+          {pack.archived_at ? ` · arquivado em ${formatarData(pack.archived_at)}` : ''}
+          {'  '}
+          {aberto ? '▾' : '▸'}
+        </Text>
+      </Pressable>
+      <Pressable style={styles.renomearBtn} onPress={onRenomear}>
+        <Text style={styles.renomearTexto}>Renomear</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * As fichas do pacote aberto.
+ *
+ * `null` significa "ainda carregando" — diferente de `[]`, que é um pacote de
+ * verdade sem ficha nenhuma. Sem essa distinção, um pacote vazio pareceria
+ * estar carregando para sempre.
+ */
+function ListaDeFichas({ fichas }: { fichas: WorkoutWithCount[] | null }) {
+  if (fichas === null) {
+    return <Text style={styles.fichaCarregando}>Carregando…</Text>;
+  }
+  if (fichas.length === 0) {
+    return <Text style={styles.fichaCarregando}>Nenhuma ficha neste pacote.</Text>;
+  }
+  return (
+    <View style={styles.fichasBox}>
+      {fichas.map((f) => (
+        <View key={f.id} style={styles.fichaLinha}>
+          <Text style={styles.fichaNome}>
+            {f.cycle_order !== null ? `${f.cycle_order}. ` : ''}
+            {f.name}
+          </Text>
+          <Text style={styles.fichaSub}>
+            {f.division ? `${f.division} · ` : ''}
+            {f.exercise_count} {f.exercise_count === 1 ? 'exercício' : 'exercícios'}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Renomear um pacote — vale tanto para o em uso quanto para um arquivado. */
+function RenomearModal({
+  pack,
+  onClose,
+  onSalvar,
+}: {
+  pack: WorkoutPackSummary | null;
+  onClose: () => void;
+  onSalvar: (nome: string) => Promise<void>;
+}) {
+  const [nome, setNome] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Recarrega o campo sempre que abre num pacote diferente.
+  useEffect(() => {
+    if (pack) {
+      setNome(pack.name);
+      setErro(null);
+    }
+  }, [pack]);
+
+  async function salvar() {
+    if (salvando) return;
+    const limpo = nome.trim();
+    if (!limpo) {
+      setErro('O nome não pode ficar vazio.');
+      return;
+    }
+    setErro(null);
+    setSalvando(true);
+    try {
+      await onSalvar(limpo);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Modal
+      visible={pack !== null}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.modalOverlay} onPress={salvando ? () => {} : onClose}>
+        <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.modalTitulo}>Renomear pacote</Text>
+
+          <Text style={styles.label}>NOME</Text>
+          <TextInput
+            style={styles.input}
+            value={nome}
+            onChangeText={setNome}
+            placeholder="Nome do pacote"
+            placeholderTextColor={colors.text.muted}
+          />
+
+          {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+
+          <Pressable
+            style={[styles.acaoPrimaria, salvando && styles.desabilitado]}
+            onPress={() => void salvar()}
+            disabled={salvando}
+          >
+            <Text style={styles.acaoPrimariaTexto}>
+              {salvando ? 'Salvando…' : 'Salvar'}
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 /** "2026-09-14 10:00:00" (UTC) → "14/09/2026" em data local. */
 function formatarData(utc: string): string {
   const normalizado = utc.replace(' ', 'T');
@@ -334,6 +534,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  cardTopo: { flexDirection: 'row', alignItems: 'flex-start' },
+  renomearBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  renomearTexto: { color: colors.text.secondary, fontSize: 13, fontWeight: '600' },
+  fichasBox: {
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.background.border,
+    paddingTop: spacing.md,
+  },
+  fichaLinha: { marginBottom: spacing.sm },
+  fichaNome: { color: colors.text.primary, fontSize: typography.size.sm, fontWeight: '600' },
+  fichaSub: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2 },
+  fichaCarregando: {
+    color: colors.text.muted,
+    fontSize: typography.size.xs,
+    marginTop: spacing.md,
   },
   cardTitulo: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
   cardSub: { color: colors.text.secondary, fontSize: typography.size.sm, marginTop: spacing.xs },

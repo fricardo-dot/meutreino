@@ -3,6 +3,11 @@ import type { DbExecutor } from '@/types/db-executor';
 
 import type { WorkoutInput, WorkoutRow } from '@/types/db';
 
+/** Ficha com a contagem de exercícios, para listagens de resumo. */
+export interface WorkoutWithCount extends WorkoutRow {
+  exercise_count: number;
+}
+
 /**
  * Repositório de acesso à tabela `workouts` (fichas de treino).
  *
@@ -26,6 +31,28 @@ export const workoutsRepository = {
          CASE WHEN cycle_order IS NULL THEN 1 ELSE 0 END,
          cycle_order NULLS LAST,
          name COLLATE NOCASE;`,
+    );
+  },
+
+  /**
+   * Lista as fichas ativas de UM pacote, com quantos exercícios cada uma tem.
+   *
+   * Serve para espiar um pacote arquivado sem reativá-lo — por isso recebe o
+   * `packId` em vez de assumir o ativo, ao contrário de `listActive`.
+   */
+  async listByPack(db: DbExecutor, packId: number): Promise<WorkoutWithCount[]> {
+    return db.getAllAsync<WorkoutWithCount>(
+      `SELECT
+         w.*,
+         (SELECT COUNT(*) FROM workout_exercises we
+           WHERE we.workout_id = w.id) AS exercise_count
+       FROM workouts w
+       WHERE w.is_active = 1 AND w.pack_id = ?
+       ORDER BY
+         CASE WHEN w.cycle_order IS NULL THEN 1 ELSE 0 END,
+         w.cycle_order,
+         w.name COLLATE NOCASE;`,
+      [packId],
     );
   },
 
