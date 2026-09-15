@@ -65,15 +65,23 @@ export type ImportSummary = Partial<Record<BackupTableName, number>>;
 /**
  * BackupService — exportação/importação de TODOS os dados do app.
  *
- * Caso de uso: o usuário troca de aparelho ou reinstala e precisa restaurar
- * treinos, histórico, recordes e perfil. A exportação serializa tudo num JSON;
- * a importação faz upsert (`ON CONFLICT DO UPDATE`) dentro de uma transação,
- * de modo que a restauração seja atômica (tudo ou nada).
+ * Dois casos de uso, e o segundo é o exigente: restaurar num aparelho vazio, e
+ * MESCLAR dois aparelhos que foram usados em paralelo. A exportação serializa
+ * tudo num JSON; a importação casa cada linha pelo `uid` (v11), traduz as
+ * chaves estrangeiras do arquivo para os ids locais e grava, tudo numa
+ * transação só — ou entra inteiro, ou nada.
+ *
+ * `ON CONFLICT DO UPDATE` sobrou apenas para `user_profile` e `app_metadata`,
+ * cujas chaves já são as mesmas nos dois aparelhos. Para o resto ele não serve:
+ * a chave primária é AUTOINCREMENT local e não identifica linha entre
+ * aparelhos — casar por ela fazia uma sobrescrever a outra.
  *
  * Compatibilidade (frente e verso):
  *  - Tabelas ausentes do JSON são puladas (backup antigo restaurando em DB novo).
  *  - Colunas ausentes do DB alvo são puladas (backup novo restaurando em DB antigo).
  *  - Tabelas do JSON inexistentes no DB são puladas com aviso.
+ *  - Arquivo sem `uid` (anterior à v11) ainda importa: a identidade vem da
+ *    chave natural de cada tabela.
  */
 /** O que um arquivo de backup contem, lido sem importar nada. */
 export interface BackupInfo {
