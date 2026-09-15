@@ -345,6 +345,21 @@ export default function CalendarioScreen() {
     !weekStatus.hasSchedule &&
     isCurrentWeek(weekStart);
 
+  /**
+   * Semana JÁ programada pode ser refeita.
+   *
+   * Sem isto não havia saída: "Montar semana" só aparecia na semana vazia, e
+   * uma semana montada por uma regra antiga — ou remexida à mão — só podia ser
+   * corrigida dia a dia. Quem mudou de pacote no meio da semana caía nisso.
+   *
+   * Semana passada fica de fora: remontar apaga a programação, e mexer no que
+   * já passou não conserta nada.
+   */
+  const podeRemontar =
+    !!weekStatus &&
+    weekStatus.hasSchedule &&
+    weekStart >= calendarService.getWeekStart();
+
   if (loadError !== null) {
     return (
       <LoadErrorView
@@ -429,6 +444,13 @@ export default function CalendarioScreen() {
                 </Pressable>
               </View>
             </View>
+          ) : podeRemontar ? (
+            <Pressable
+              style={styles.remontarBtn}
+              onPress={() => setShowWeekStartModal(true)}
+            >
+              <Text style={styles.remontarTexto}>↻ Remontar semana</Text>
+            </Pressable>
           ) : showNewWeekBanner ? (
             <View style={styles.newWeekBanner}>
               <Text style={styles.newWeekEmoji}>🎉</Text>
@@ -507,6 +529,7 @@ export default function CalendarioScreen() {
         continueWorkoutName={continueWorkoutName}
         restartWorkoutName={restartWorkoutName}
         autoFilling={autoFilling}
+        remontando={podeRemontar}
         onAutoFillContinue={() => handleAutoFill(false)}
         onAutoFillRestart={() => handleAutoFill(true)}
         onManual={() => setShowWeekStartModal(false)}
@@ -822,6 +845,7 @@ function NewWeekModal({
   continueWorkoutName,
   restartWorkoutName,
   autoFilling,
+  remontando,
   onAutoFillContinue,
   onAutoFillRestart,
   onManual,
@@ -831,6 +855,8 @@ function NewWeekModal({
   continueWorkoutName: string | null;
   restartWorkoutName: string | null;
   autoFilling: boolean;
+  /** A semana já tem programação — o que estiver montado será substituído. */
+  remontando: boolean;
   onAutoFillContinue: () => void;
   onAutoFillRestart: () => void;
   onManual: () => void;
@@ -843,8 +869,15 @@ function NewWeekModal({
           style={[styles.pickerSheet, styles.newWeekSheet]}
           onPress={(e) => e.stopPropagation()}
         >
-          <Text style={styles.newWeekModalTitle}>Nova semana! 🎉</Text>
-          <Text style={styles.newWeekModalSubtitle}>Como deseja começar?</Text>
+          <Text style={styles.newWeekModalTitle}>
+            {remontando ? 'Remontar a semana?' : 'Nova semana! 🎉'}
+          </Text>
+          <Text style={styles.newWeekModalSubtitle}>
+            {remontando
+              ? 'A programação atual desta semana será substituída. Os treinos '
+                + 'já registrados não são afetados.'
+              : 'Como deseja começar?'}
+          </Text>
 
           <Pressable
             style={[styles.newWeekOption, styles.newWeekOptionPrimary]}
@@ -1017,6 +1050,21 @@ const styles = StyleSheet.create({
   bannerDiscardText: { color: colors.status.danger, fontWeight: '600', fontSize: 15 },
 
   // ── Banner "Nova semana" ────────────────────────────────────────────────
+  remontarBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.background.border,
+    backgroundColor: colors.background.surface,
+  },
+  remontarTexto: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   newWeekBanner: {
     flexDirection: 'row',
     alignItems: 'center',
