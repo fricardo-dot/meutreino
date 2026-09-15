@@ -465,8 +465,17 @@ function ExerciseBlock({
     }
   }
 
+  /**
+   * Exercício começado e ainda não terminado.
+   *
+   * É o que o card destaca. Antes todos tinham a mesma aparência e, com sete
+   * exercícios na lista, voltar ao app depois do descanso exigia procurar onde
+   * se estava. Zero séries ainda não é "em andamento": é o próximo da fila.
+   */
+  const emAndamento = sets.length > 0 && !allDone;
+
   return (
-    <View style={styles.block}>
+    <View style={[styles.block, emAndamento && styles.blockEmAndamento]}>
       <Text style={styles.blockTitle}>{sessionExercise.exercise_name}</Text>
       {(sessionExercise.target_sets || sessionExercise.target_reps) && (
         <Text style={styles.blockPlan}>
@@ -640,6 +649,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginBottom: 14,
+  },
+  // Mesmo tratamento que o calendário dá ao dia de hoje: é a linguagem que o
+  // app já usa para "é este aqui".
+  blockEmAndamento: {
+    borderColor: colors.accent.base,
+    borderWidth: 2,
+    backgroundColor: colors.background.elevated,
+    // Compensa o borderWidth extra (2 vs 1) pra não encolher o conteúdo.
+    padding: spacing.lg - 1,
   },
   blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
   blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: spacing.xs },
