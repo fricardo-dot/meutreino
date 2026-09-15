@@ -20,7 +20,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 import {
-  descreverCorrida,
+  linhasDaCorrida,
   packRunsRepository,
 } from '@/repositories/pack-runs.repository';
 import { utcToLocalISODate } from '@/services/calendar.service';
@@ -101,7 +101,11 @@ export default function RegistrarSessaoScreen() {
         const local = new Date(`${utcToLocalISODate(s.started_at)}T12:00:00`);
         // getDay(): 0 = domingo. O app conta a semana a partir da segunda.
         const corrida = corridas.get((local.getDay() + 6) % 7);
-        if (corrida) linhas.push(`🏃 Antes: ${descreverCorrida(corrida)}`);
+        if (corrida) {
+          linhasDaCorrida(corrida).forEach((linha, i) => {
+            linhas.push(i === 0 ? `🏃 Antes: ${linha}` : linha);
+          });
+        }
       }
       // A sessão guarda só o NOME da ficha (snapshot). A observação vem da
       // ficha de origem, que continua existindo mesmo em pacote arquivado.
@@ -214,17 +218,6 @@ export default function RegistrarSessaoScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* O que ler antes de começar: a corrida do dia e a nota da ficha. */}
-      {prescricao.length > 0 ? (
-        <View style={styles.notaWrap}>
-          {prescricao.map((linha) => (
-            <Text key={linha} style={styles.notaTexto}>
-              {linha}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
       <FlatList
         data={exercises}
         keyExtractor={(item) => String(item.id)}
@@ -241,6 +234,23 @@ export default function RegistrarSessaoScreen() {
             }}
           />
         )}
+        // A prescrição do dia entra como cabeçalho DA LISTA, e não acima dela:
+        // fixa no topo, ela roubava altura da tela inteira durante o treino,
+        // que é quando se rola atrás do próximo exercício. Aqui ela é lida no
+        // começo e sai do caminho.
+        ListHeaderComponent={
+          prescricao.length > 0 ? (
+            <View style={styles.notaWrap}>
+              {/* `prescricao` mistura linhas da corrida com a nota da ficha:
+                  o texto não serve de chave porque pode repetir. */}
+              {prescricao.map((linha, i) => (
+                <Text key={i} style={styles.notaTexto}>
+                  {linha}
+                </Text>
+              ))}
+            </View>
+          ) : null
+        }
         contentContainerStyle={{
           padding: spacing.lg,
           // A barra de descanso flutua ACIMA do rodapé: sem esta folga extra
@@ -574,7 +584,6 @@ function ExerciseBlock({
 
 const styles = StyleSheet.create({
   notaWrap: {
-    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,

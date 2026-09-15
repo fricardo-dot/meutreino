@@ -22,7 +22,7 @@ import {
   type WorkoutWithCount,
 } from '@/repositories/workouts.repository';
 import {
-  descreverCorrida,
+  linhasDaCorrida,
   packRunsRepository,
 } from '@/repositories/pack-runs.repository';
 import type { PackRunRow } from '@/types/db';
@@ -440,10 +440,17 @@ function ListaDeCorridas({ corridas }: { corridas: PackRunRow[] }) {
   return (
     <View style={styles.corridasWrap}>
       {corridas.map((c) => (
-        <Text key={c.id} style={styles.corridaLinha}>
-          🏃 {DIAS[c.day_of_week]} · {descreverCorrida(c)}
-          {c.run_only === 1 ? ' (sem musculação)' : ''}
-        </Text>
+        <View key={c.id} style={styles.corridaDoDia}>
+          {linhasDaCorrida(c).map((linha, i) => (
+            <Text key={linha} style={styles.corridaLinha}>
+              {i === 0
+                ? `🏃 ${DIAS[c.day_of_week]} · ${linha}${
+                    c.run_only === 1 ? ' (sem musculação)' : ''
+                  }`
+                : linha}
+            </Text>
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -614,7 +621,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   renomearTexto: { color: colors.text.secondary, fontSize: 13, fontWeight: '600' },
-  corridasWrap: { marginTop: spacing.sm, gap: 4 },
+  corridasWrap: { marginTop: spacing.sm, gap: spacing.sm },
+  corridaDoDia: { gap: 2 },
   corridaLinha: {
     color: colors.text.secondary,
     fontSize: typography.size.sm,

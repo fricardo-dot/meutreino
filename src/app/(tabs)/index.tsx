@@ -22,7 +22,7 @@ import { scheduledWorkoutsRepository } from '@/repositories/scheduled-workouts.r
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
-import { descreverCorrida } from '@/repositories/pack-runs.repository';
+import { linhasDaCorrida } from '@/repositories/pack-runs.repository';
 import {
   calendarService,
   type CalendarDay,
@@ -617,9 +617,11 @@ function DayCard({
           vem antes da musculação, e num dia sem ficha ela é o conteúdo. */}
       {day.run ? (
         <View style={styles.corridaWrap}>
-          <Text style={styles.corridaTexto}>
-            🏃 {descreverCorrida(day.run)}
-          </Text>
+          {linhasDaCorrida(day.run).map((linha, i) => (
+            <Text key={linha} style={styles.corridaTexto}>
+              {i === 0 ? `🏃 ${linha}` : linha}
+            </Text>
+          ))}
         </View>
       ) : null}
 

@@ -51,14 +51,23 @@ export const packRunsRepository = {
 };
 
 /**
- * "corrida principal · 5 km · 6:20–6:30/km · esteira 9,2–9,5 km/h"
+ * A corrida em três linhas:
+ *
+ *     corrida principal · 5 km
+ *     pace: 6:20–6:30/km
+ *     esteira: 9,2–9,5 km/h
+ *
+ * Devolve as linhas em vez de um texto só porque numa linha corrida os três
+ * números se embolam justamente quando são lidos com pressa — antes de sair
+ * para correr. E são rotulados: "6:20–6:30/km" e "9,2–9,5 km/h" não dizem
+ * sozinhos qual é o ritmo e qual é o botão da esteira.
  *
  * Uma única forma de escrever a corrida, usada por todas as telas — o motivo
  * de a prescrição ter virado dado foi justamente parar de reescrevê-la.
  */
-export function descreverCorrida(run: PackRunRow): string {
-  const partes = [run.kind, run.volume];
-  if (run.pace) partes.push(run.pace);
-  if (run.treadmill) partes.push(`esteira ${run.treadmill}`);
-  return partes.join(' · ');
+export function linhasDaCorrida(run: PackRunRow): string[] {
+  const linhas = [`${run.kind} · ${run.volume}`];
+  if (run.pace) linhas.push(`pace: ${run.pace}`);
+  if (run.treadmill) linhas.push(`esteira: ${run.treadmill}`);
+  return linhas;
 }
