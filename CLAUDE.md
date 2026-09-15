@@ -53,7 +53,36 @@ Registro de treinos. O mesmo código roda nativo (Expo) e como PWA web.
   ANTES, na mesma transação. Já quebrou o botão "apagar todas as séries".
 - **Import de backup nunca usa `INSERT OR REPLACE`.** REPLACE apaga a linha
   conflitante antes de inserir e dispara as FKs — abortava a importação por
-  RESTRICT e apagava filhos por CASCADE. Use `ON CONFLICT DO UPDATE`.
+  RESTRICT e apagava filhos por CASCADE. Também não casa por chave primária:
+  `id` é AUTOINCREMENT local e não identifica linha entre aparelhos. Casa por
+  `uid`, e o id do arquivo nunca é gravado — as FKs são traduzidas para os ids
+  locais enquanto a importação avança, e por isso a ordem de `BACKUP_TABLES`,
+  com pai antes de filho, é requisito e não conveniência. `ON CONFLICT DO
+  UPDATE` só vale para `user_profile` e `app_metadata`, cujas chaves já são as
+  mesmas nos dois aparelhos.
+- **Toda tabela do backup tem `uid`** (v11): identidade sorteada no aparelho
+  que criou a linha, preenchida por TRIGGER e não pelo app — são mais de vinte
+  lugares que inserem, e um esquecido geraria linha sem identidade, que é
+  justamente a que se perde na próxima sincronização. Tabela nova entra com
+  `uid`, índice único parcial e trigger, e vai para `BACKUP_TABLES` e `REGRAS`.
+  Nada disso é cobrado em runtime: sem `uid` a importação cai na chave natural
+  e, sem ela também, duplica em silêncio. O uid é SORTEADO, nunca derivado de
+  um campo — derivá-lo do nome do exercício quebra a migration de quem tem um
+  arquivado homônimo de um ativo (o índice de nome é parcial).
+- **Corrida é do DIA da semana, não da ficha** (`pack_runs`, um registro por
+  pacote + dia). Ficha é modelo: se remarca, se repete, muda de posição no
+  ciclo — o "5 km de quarta" não anda junto com ela. Guardar a prescrição na
+  ficha fazia a informação ficar errada assim que a semana era remontada.
+  `run_only = 1` marca o dia sem musculação, e é o que a montagem automática
+  consulta para não ocupá-lo. Corrida NÃO vira exercício nem série: o app
+  registra carga e repetições, e 5 km entraria como número solto, sujando
+  volume, 1RM e recordes.
+- **Montar a semana espalha, não enfileira.** O primeiro treino ancora na
+  segunda, o último na sexta, o resto é espaçado por igual, e os dias
+  reservados à corrida saem da conta antes. Enfileirar a partir da segunda
+  treinava quatro dias seguidos e deixava a sexta vazia. Dia útil que sobra
+  fica SEM programação — nunca marcado como descanso: o app não sabe o que o
+  usuário faz nele.
 - `ensureSeedData` roda em toda inicialização e precisa continuar idempotente.
 - **Marcador de seed diz "criei", não "está atualizado".** Conteúdo novo num
   seed já publicado não alcança quem já rodou aquele seed. Bumpar o marcador
