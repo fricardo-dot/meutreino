@@ -551,3 +551,55 @@ export const SQL_MIGRATION_V11 = /* sql */ `
     UPDATE scheduled_workouts SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
   END;
 `;
+
+/**
+ * v12 — a corrida do bloco deixa de ser texto e vira dado.
+ *
+ * O plano de corrida vivia em `workout_packs.notes` e em `workouts.notes`, como
+ * prosa. Servia para ler, e só: o app não sabia que quarta-feira é dia de
+ * corrida, então "montar semana" ocupava a quarta com musculação e ainda
+ * deixava a sexta vazia. Texto livre não responde pergunta nenhuma.
+ *
+ * A corrida pertence ao DIA DA SEMANA, não à ficha. Uma ficha é um modelo —
+ * pode ser remarcada para outro dia, repetida, trocada de posição no ciclo. O
+ * "5 km de quarta" não se move junto com ela: é da quarta. Guardar isso na
+ * ficha era o que fazia a informação ficar errada assim que a semana mudava.
+ *
+ * `run_only` marca o dia que NÃO tem musculação — é o que permite a montagem
+ * automática pular aquele dia em vez de atropelá-lo.
+ *
+ * Cascata na exclusão do pacote é segura aqui: pacote não se apaga (se
+ * arquiva), e a importação de backup não usa REPLACE desde a v11, então não há
+ * DELETE disparando FK por baixo dos panos.
+ */
+export const SQL_MIGRATION_V12 = /* sql */ `
+  CREATE TABLE IF NOT EXISTS pack_runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    pack_id     INTEGER NOT NULL REFERENCES workout_packs(id) ON DELETE CASCADE,
+    -- 0 = segunda, como em scheduled_workouts e no calendário.
+    day_of_week INTEGER NOT NULL CHECK(day_of_week BETWEEN 0 AND 6),
+    -- "aquecimento", "corrida curta", "intervalado"...
+    kind        TEXT NOT NULL,
+    -- "1 km", "5 km", "3 × 1 km" — texto porque o formato varia.
+    volume      TEXT NOT NULL,
+    pace        TEXT,
+    treadmill   TEXT,
+    -- 1 quando o dia é só corrida, sem musculação.
+    run_only    INTEGER NOT NULL DEFAULT 0 CHECK(run_only IN (0, 1)),
+    uid         TEXT
+  );
+
+  -- Uma corrida por dia em cada pacote.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_pack_runs_dia
+    ON pack_runs(pack_id, day_of_week);
+
+  -- Mesma identidade entre aparelhos das demais tabelas (ver v11).
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_pack_runs_uid
+    ON pack_runs(uid) WHERE uid IS NOT NULL;
+
+  CREATE TRIGGER IF NOT EXISTS trg_pack_runs_uid AFTER INSERT ON pack_runs
+    WHEN NEW.uid IS NULL
+  BEGIN
+    UPDATE pack_runs SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
+  END;
+`;

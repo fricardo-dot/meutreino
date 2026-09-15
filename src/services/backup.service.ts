@@ -27,6 +27,8 @@ export const BACKUP_TABLES = [
   // `workout_packs` vem ANTES de `workouts`: a ficha referencia o pacote, e a
   // importação insere na ordem desta lista justamente para o pai existir.
   'workout_packs',
+  // Mesma razão: `pack_runs` referencia o pacote.
+  'pack_runs',
   'workouts',
   'workout_exercises',
   'sessions',
@@ -290,6 +292,10 @@ const REGRAS: Record<BackupTableName, RegraDeMesclagem> = {
     }],
   },
   workout_packs: { natural: [{ coluna: 'name' }] },
+  pack_runs: {
+    fks: { pack_id: 'workout_packs' },
+    natural: [{ coluna: 'pack_id' }, { coluna: 'day_of_week' }],
+  },
   workouts: {
     fks: { pack_id: 'workout_packs' },
     natural: [{ coluna: 'pack_id' }, { coluna: 'name' }],

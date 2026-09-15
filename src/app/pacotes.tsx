@@ -21,6 +21,11 @@ import {
   workoutsRepository,
   type WorkoutWithCount,
 } from '@/repositories/workouts.repository';
+import {
+  descreverCorrida,
+  packRunsRepository,
+} from '@/repositories/pack-runs.repository';
+import type { PackRunRow } from '@/types/db';
 import { mensagemDeErro } from '@/types/errors.helpers';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -53,6 +58,13 @@ export default function PacotesScreen() {
    */
   const [abertoId, setAbertoId] = useState<number | null>(null);
   const [fichasDoAberto, setFichasDoAberto] = useState<WorkoutWithCount[] | null>(null);
+  /**
+   * As corridas do pacote aberto.
+   *
+   * Sem isto, o plano de corrida de um pacote ARQUIVADO não apareceria em
+   * lugar nenhum: o calendário só mostra o do pacote em uso.
+   */
+  const [corridasDoAberto, setCorridasDoAberto] = useState<PackRunRow[]>([]);
 
   const load = useCallback(async () => {
     if (status !== 'ready' || !db) return;
@@ -88,18 +100,24 @@ export default function PacotesScreen() {
     if (abertoId === pack.id) {
       setAbertoId(null);
       setFichasDoAberto(null);
+      setCorridasDoAberto([]);
       return;
     }
     setAbertoId(pack.id);
     setFichasDoAberto(null);
+    setCorridasDoAberto([]);
     if (!db) return;
     try {
       const fichas = await workoutsRepository.listByPack(db, pack.id);
+      const corridas = await packRunsRepository.listByPack(db, pack.id);
       // Abrir A e, antes da resposta, abrir B: a consulta de A pode voltar
       // depois e pintar as fichas de A dentro do card de B. Só aplica se este
       // ainda for o card aberto.
       setAbertoId((atual) => {
-        if (atual === pack.id) setFichasDoAberto(fichas);
+        if (atual === pack.id) {
+          setFichasDoAberto(fichas);
+          setCorridasDoAberto(corridas);
+        }
         return atual;
       });
     } catch (error) {
@@ -181,6 +199,7 @@ export default function PacotesScreen() {
                 {abertoId === ativo.id ? (
                   <>
                     <NotaDoPacote notas={ativo.notes} />
+                    <ListaDeCorridas corridas={corridasDoAberto} />
                     <ListaDeFichas fichas={fichasDoAberto} />
                   </>
                 ) : null}
@@ -207,6 +226,7 @@ export default function PacotesScreen() {
             {abertoId === item.id ? (
               <>
                 <NotaDoPacote notas={item.notes} />
+                <ListaDeCorridas corridas={corridasDoAberto} />
                 <ListaDeFichas fichas={fichasDoAberto} />
               </>
             ) : null}
@@ -408,6 +428,28 @@ function NotaDoPacote({ notas }: { notas: string | null }) {
 }
 
 /**
+ * O plano de corrida do pacote, um dia por linha.
+ *
+ * Mostra os SETE dias? Não: só os que têm corrida. Dia sem corrida não vira
+ * linha vazia, e o dia que é só corrida ganha a marca — é a informação que não
+ * cabe em nenhuma ficha, porque não existe ficha nele.
+ */
+function ListaDeCorridas({ corridas }: { corridas: PackRunRow[] }) {
+  if (corridas.length === 0) return null;
+  const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  return (
+    <View style={styles.corridasWrap}>
+      {corridas.map((c) => (
+        <Text key={c.id} style={styles.corridaLinha}>
+          🏃 {DIAS[c.day_of_week]} · {descreverCorrida(c)}
+          {c.run_only === 1 ? ' (sem musculação)' : ''}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/**
  * As fichas do pacote aberto.
  *
  * `null` significa "ainda carregando" — diferente de `[]`, que é um pacote de
@@ -572,6 +614,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   renomearTexto: { color: colors.text.secondary, fontSize: 13, fontWeight: '600' },
+  corridasWrap: { marginTop: spacing.sm, gap: 4 },
+  corridaLinha: {
+    color: colors.text.secondary,
+    fontSize: typography.size.sm,
+    lineHeight: 18,
+  },
   notaWrap: {
     marginTop: spacing.md,
     paddingVertical: spacing.md,

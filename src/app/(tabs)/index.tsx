@@ -22,6 +22,7 @@ import { scheduledWorkoutsRepository } from '@/repositories/scheduled-workouts.r
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
+import { descreverCorrida } from '@/repositories/pack-runs.repository';
 import {
   calendarService,
   type CalendarDay,
@@ -611,6 +612,17 @@ function DayCard({
         ) : null}
       </View>
 
+      {/* A corrida do dia, quando o pacote prescreve uma.
+          Fica ACIMA do conteúdo por status de propósito: no bloco híbrido ela
+          vem antes da musculação, e num dia sem ficha ela é o conteúdo. */}
+      {day.run ? (
+        <View style={styles.corridaWrap}>
+          <Text style={styles.corridaTexto}>
+            🏃 {descreverCorrida(day.run)}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Conteúdo por status */}
       {day.status === 'completed' && day.sessionId ? (
         <View style={styles.completedBody}>
@@ -1051,6 +1063,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.sm,
+  },
+  corridaWrap: {
+    backgroundColor: colors.background.elevated,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  corridaTexto: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    lineHeight: 18,
   },
   dayLabel: { color: colors.text.secondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   dayLabelToday: { color: colors.accent.base },

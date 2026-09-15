@@ -4,6 +4,9 @@ import { appMetadataRepository } from '@/repositories/app-metadata.repository';
 import { SEED_EXERCISES } from './seed-exercises';
 import { SEED_WORKOUTS, type SeedWorkout } from './seed-workouts';
 import {
+  LEGADO_NOTAS_DAS_FICHAS,
+  LEGADO_NOTAS_DO_PACOTE,
+  PACK_HIBRIDO_CORRIDAS,
   PACK_HIBRIDO_NOME,
   PACK_HIBRIDO_NOTAS,
   PACK_HIBRIDO_WORKOUTS,
@@ -42,6 +45,17 @@ const SEED_PACK_HIBRIDO_KEY = 'seed_pack_hibrido_v1';
  * mesmo nome.
  */
 const SEED_PACK_HIBRIDO_NOTAS_KEY = 'seed_pack_hibrido_notas_v1';
+
+/**
+ * Marca que a corrida do bloco já foi gravada como DADO (tabela `pack_runs`).
+ *
+ * Terceiro marcador desta mesma linhagem, e pelo mesmo motivo dos anteriores:
+ * o conteúdo mudou depois que o pacote já estava publicado. Aqui a mudança é
+ * de forma — a mesma prescrição deixou de ser prosa e virou linha de tabela —
+ * então além de gravar é preciso RETIRAR o texto antigo, senão o app passa a
+ * dizer a mesma coisa em dois lugares.
+ */
+const SEED_PACK_HIBRIDO_CORRIDAS_KEY = 'seed_pack_hibrido_corridas_v1';
 
 /**
  * Seed inicial do banco.
@@ -102,74 +116,86 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
   const packSeeded = await appMetadataRepository.get(db, SEED_PACK_HIBRIDO_KEY);
   if (packSeeded === null) {
     await db.withTransactionAsync(async (tx) => {
-      await seedPackArquivado(
+      const packId = await seedPackArquivado(
         tx,
         PACK_HIBRIDO_NOME,
         PACK_HIBRIDO_NOTAS,
         PACK_HIBRIDO_WORKOUTS,
       );
+      await gravarCorridas(tx, packId);
       await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_KEY, '1');
-      // Nasceu com as notas: nada a preencher depois.
+      // Nasceu completo: nada a preencher nem a limpar depois.
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_NOTAS_KEY, '1');
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_CORRIDAS_KEY, '1');
+    });
+    return;
+  }
+
+  // 5. Pacote que já existia: a corrida precisa chegar nele como dado, e a
+  //    prosa que a versão anterior gravou precisa sair.
+  const corridasGravadas = await appMetadataRepository.get(
+    db,
+    SEED_PACK_HIBRIDO_CORRIDAS_KEY,
+  );
+  if (corridasGravadas === null) {
+    await db.withTransactionAsync(async (tx) => {
+      for (const packId of await acharPacotesDoHibrido(tx)) {
+        await gravarCorridas(tx, packId);
+        await trocarTextoLegado(tx, packId);
+      }
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_CORRIDAS_KEY, '1');
+      // Quem chega aqui já não precisa do passo antigo de notas.
       await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_NOTAS_KEY, '1');
     });
-  } else {
-    // 5. Notas de corrida num pacote que já existia (ver o marcador acima).
-    const notasPreenchidas = await appMetadataRepository.get(
-      db,
-      SEED_PACK_HIBRIDO_NOTAS_KEY,
-    );
-    if (notasPreenchidas === null) {
-      await db.withTransactionAsync(async (tx) => {
-        await preencherNotasDoHibrido(tx);
-        await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_NOTAS_KEY, '1');
-      });
-    }
   }
 }
 
 /**
- * Preenche a prescrição de corrida num pacote "Treino Híbrido" já existente.
+ * Grava a corrida de cada dia do bloco.
  *
- * Só escreve onde `notes IS NULL`. Nota que o usuário tenha escrito fica como
- * está — o app não tem o direito de sobrescrever texto dele para instalar o
- * próprio. E aqui isso é definitivo: nenhuma tela edita nota de pacote, só
- * exibe. Escrever no pacote errado seria um texto que o usuário não consegue
- * tirar.
- *
- * Por isso o pacote NÃO é procurado pelo nome. `workout_packs.name` não tem
- * índice único, e "Treino Híbrido" é um nome que o usuário pode ter dado ao
- * pacote dele — o seed não guardou o id em lugar nenhum, então nome seria um
- * palpite com consequência permanente.
- *
- * O que identifica o pacote é o CONTEÚDO: ele tem as quatro fichas do bloco,
- * cada uma com a mesma divisão e a mesma posição no ciclo. Isso não acerta o
- * pacote de outra pessoa por coincidência, e continua valendo se o usuário
- * renomeou o pacote — renomear não é recusar a prescrição.
- *
- * Se houver mais de um (o usuário pode ter copiado o bloco ao criar um pacote
- * novo), todos recebem: cada um É o bloco híbrido, e a corrida vale para
- * qualquer um deles.
+ * `INSERT OR IGNORE` apoiado no índice único (pacote + dia): rodar de novo não
+ * duplica, e uma corrida que o usuário já tenha ajustado fica como está.
  */
-async function preencherNotasDoHibrido(db: DbTransaction): Promise<void> {
-  for (const packId of await acharPacotesDoHibrido(db)) {
+async function gravarCorridas(db: DbTransaction, packId: number): Promise<void> {
+  for (const corrida of PACK_HIBRIDO_CORRIDAS) {
     await db.runAsync(
-      `UPDATE workout_packs SET notes = ? WHERE id = ? AND notes IS NULL;`,
-      [PACK_HIBRIDO_NOTAS, packId],
+      `INSERT OR IGNORE INTO pack_runs
+        (pack_id, day_of_week, kind, volume, pace, treadmill, run_only)
+       VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      [
+        packId,
+        corrida.dia,
+        corrida.tipo,
+        corrida.volume,
+        corrida.pace,
+        corrida.esteira,
+        corrida.somenteCorrida ? 1 : 0,
+      ],
     );
+  }
+}
 
-    for (const ficha of PACK_HIBRIDO_WORKOUTS) {
-      if (ficha.notes === undefined) {
-        continue;
-      }
-      // Mesma tripla da identificação: dentro do pacote, o nome sozinho também
-      // não é único.
-      await db.runAsync(
-        `UPDATE workouts SET notes = ?
-          WHERE pack_id = ? AND name = ? AND division = ? AND cycle_order = ?
-            AND notes IS NULL;`,
-        [ficha.notes, packId, ficha.name, ficha.division, ficha.cycle_order ?? null],
-      );
-    }
+/**
+ * Tira do banco a prescrição em prosa que a versão anterior gravou.
+ *
+ * Compara com o texto EXATO que o próprio app escreveu. Qualquer outra coisa —
+ * inclusive uma frase que o usuário tenha digitado — não é tocada: o app pode
+ * desfazer o que ele mesmo fez, não o que é do usuário.
+ *
+ * Sem este passo o plano apareceria duas vezes: estruturado no calendário e
+ * escrito no cartão do pacote e nas fichas.
+ */
+async function trocarTextoLegado(db: DbTransaction, packId: number): Promise<void> {
+  await db.runAsync(
+    'UPDATE workout_packs SET notes = ? WHERE id = ? AND notes = ?;',
+    [PACK_HIBRIDO_NOTAS, packId, LEGADO_NOTAS_DO_PACOTE],
+  );
+
+  for (const [ficha, textoAntigo] of Object.entries(LEGADO_NOTAS_DAS_FICHAS)) {
+    await db.runAsync(
+      'UPDATE workouts SET notes = NULL WHERE pack_id = ? AND name = ? AND notes = ?;',
+      [packId, ficha, textoAntigo],
+    );
   }
 }
 
@@ -213,12 +239,13 @@ async function seedPackArquivado(
   nome: string,
   notas: string | null,
   fichas: ReadonlyArray<SeedWorkout>,
-): Promise<void> {
+): Promise<number> {
   const pack = await db.runAsync(
     `INSERT INTO workout_packs (name, notes, is_active) VALUES (?, ?, 0);`,
     [nome, notas],
   );
   await seedWorkouts(db, fichas, pack.lastInsertRowId);
+  return pack.lastInsertRowId;
 }
 
 /**

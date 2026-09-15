@@ -89,6 +89,29 @@ export interface WorkoutRow {
  * Exatamente um fica ativo; os demais são o histórico de ciclos passados,
  * consultáveis e reativáveis.
  */
+/**
+ * Uma corrida prescrita por um pacote para um dia da semana.
+ *
+ * Fica presa ao DIA e não à ficha: remarcar um treino não muda o que se corre
+ * na quarta. Foi guardar isso na ficha que fazia a informação ficar errada
+ * assim que a semana era remontada.
+ */
+export interface PackRunRow {
+  id: number;
+  pack_id: number;
+  /** 0 = segunda. */
+  day_of_week: number;
+  /** "aquecimento", "corrida curta", "intervalado"... */
+  kind: string;
+  /** "1 km", "5 km", "3 × 1 km". */
+  volume: string;
+  pace: string | null;
+  treadmill: string | null;
+  /** 1 no dia sem musculação — a semana automática pula esse dia. */
+  run_only: number;
+  uid: string | null;
+}
+
 export interface WorkoutPackRow {
   id: number;
   name: string;

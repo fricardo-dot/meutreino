@@ -1,4 +1,4 @@
-import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8, SQL_MIGRATION_V9, SQL_MIGRATION_V10, SQL_MIGRATION_V11 } from './schema';
+import { SQL_CREATE_APP_METADATA, SQL_CREATE_DOMAIN_TABLES_V2, SQL_MIGRATION_V3, SQL_MIGRATION_V4, SQL_MIGRATION_V5_RESET, SQL_MIGRATION_V6, SQL_MIGRATION_V7, SQL_MIGRATION_V8, SQL_MIGRATION_V9, SQL_MIGRATION_V10, SQL_MIGRATION_V11, SQL_MIGRATION_V12 } from './schema';
 
 /**
  * Migrations versionadas do banco de dados.
@@ -95,6 +95,13 @@ export const migrations: Migration[] = [
       'Adiciona uid em todas as tabelas do backup — identidade de linha que ' +
       'não depende do aparelho, para a importação mesclar em vez de sobrescrever.',
     up: SQL_MIGRATION_V11,
+  },
+  {
+    version: 12,
+    description:
+      'Cria pack_runs — a corrida do bloco presa ao dia da semana, para o ' +
+      'calendário e a montagem automática saberem que aquele dia existe.',
+    up: SQL_MIGRATION_V12,
   },
 ];
 

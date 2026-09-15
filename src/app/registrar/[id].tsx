@@ -19,6 +19,11 @@ import { useRestTimer } from '@/hooks/useRestTimer';
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
+import {
+  descreverCorrida,
+  packRunsRepository,
+} from '@/repositories/pack-runs.repository';
+import { utcToLocalISODate } from '@/services/calendar.service';
 import { sessionSetsRepository } from '@/repositories/session-sets.repository';
 import { autofillService } from '@/services/autofill.service';
 import { workoutEngine, type SaveSetResult } from '@/services/workout-engine';
@@ -69,8 +74,11 @@ export default function RegistrarSessaoScreen() {
   const restTimer = useRestTimer();
 
   const [session, setSession] = useState<SessionRow | null>(null);
-  /** Observação da ficha de origem: a corrida prescrita para o dia. */
-  const [fichaNotes, setFichaNotes] = useState<string | null>(null);
+  /**
+   * O que ler antes de treinar: a corrida prescrita para ESTE dia, e a
+   * observação da ficha, se houver.
+   */
+  const [prescricao, setPrescricao] = useState<string[]>([]);
   const [exercises, setExercises] = useState<SessionExerciseWithPlan[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<number, SessionSetRow[]>>({});
   const [loading, setLoading] = useState(true);
@@ -84,13 +92,24 @@ export default function RegistrarSessaoScreen() {
     try {
       const s = await sessionsRepository.getById(db, sessionId);
       setSession(s);
+      // A corrida é do DIA da semana, não da ficha: vem do dia em que esta
+      // sessão começou, e não da ficha que a originou. Ficha se remarca; o que
+      // se corre na quarta é da quarta.
+      const linhas: string[] = [];
+      if (s) {
+        const corridas = await packRunsRepository.mapaDoPacoteAtivo(db);
+        const local = new Date(`${utcToLocalISODate(s.started_at)}T12:00:00`);
+        // getDay(): 0 = domingo. O app conta a semana a partir da segunda.
+        const corrida = corridas.get((local.getDay() + 6) % 7);
+        if (corrida) linhas.push(`🏃 Antes: ${descreverCorrida(corrida)}`);
+      }
       // A sessão guarda só o NOME da ficha (snapshot). A observação vem da
       // ficha de origem, que continua existindo mesmo em pacote arquivado.
-      setFichaNotes(
-        s?.workout_id != null
-          ? ((await workoutsRepository.getById(db, s.workout_id))?.notes ?? null)
-          : null,
-      );
+      if (s?.workout_id != null) {
+        const nota = (await workoutsRepository.getById(db, s.workout_id))?.notes;
+        if (nota) linhas.push(nota);
+      }
+      setPrescricao(linhas);
       if (s) {
         const exs = await db.getAllAsync<SessionExerciseWithPlan>(
           `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
@@ -195,10 +214,14 @@ export default function RegistrarSessaoScreen() {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* Observação da ficha — a corrida que antecede a musculação mora aqui. */}
-      {fichaNotes ? (
+      {/* O que ler antes de começar: a corrida do dia e a nota da ficha. */}
+      {prescricao.length > 0 ? (
         <View style={styles.notaWrap}>
-          <Text style={styles.notaTexto}>{fichaNotes}</Text>
+          {prescricao.map((linha) => (
+            <Text key={linha} style={styles.notaTexto}>
+              {linha}
+            </Text>
+          ))}
         </View>
       ) : null}
 

@@ -1,7 +1,9 @@
 import type { AppDatabase } from '@/types/app-database';
+import type { PackRunRow } from '@/types/db';
 
 import { scheduledWorkoutsRepository, type ScheduledWorkoutWithPlan } from '@/repositories/scheduled-workouts.repository';
 import { sessionsRepository } from '@/repositories/sessions.repository';
+import { packRunsRepository } from '@/repositories/pack-runs.repository';
 import { trainingCycleService } from './training-cycle.service';
 
 /**
@@ -35,6 +37,13 @@ export interface CalendarDay {
   sessionId: number | null;
   /** Índice do dia na semana (0=Seg, 1=Ter...). */
   dayOfWeek: number;
+  /**
+   * A corrida que o pacote em uso prescreve para este dia da semana, se houver.
+   *
+   * Não depende de haver ficha: é justamente o que faz a quarta-feira do bloco
+   * híbrido — dia sem musculação — deixar de ser um buraco no calendário.
+   */
+  run: PackRunRow | null;
 }
 
 /** Informações sobre o estado da semana (para UI mostrar banner etc). */
@@ -96,6 +105,11 @@ export const calendarService = {
     // Camada 2: Programação da semana (scheduled_workouts).
     const schedule = await scheduledWorkoutsRepository.listByWeek(db, weekStartISO);
 
+    // Camada paralela: a corrida prescrita para cada dia DA SEMANA (não da
+    // data). Não depende de haver ficha programada — é o que faz o dia de
+    // corrida existir no calendário mesmo sem musculação nenhuma.
+    const corridas = await packRunsRepository.mapaDoPacoteAtivo(db);
+
     const todayISO = toISODate(new Date());
 
     for (let i = 0; i < 7; i++) {
@@ -124,6 +138,7 @@ export const calendarService = {
           workoutId: session.workout_id,
           sessionId: session.id,
           dayOfWeek: i,
+          run: corridas.get(i) ?? null,
         });
         continue;
       }
@@ -144,6 +159,7 @@ export const calendarService = {
             workoutId: null,
             sessionId: null,
             dayOfWeek: i,
+            run: corridas.get(i) ?? null,
           });
         } else {
           days.push({
@@ -157,6 +173,7 @@ export const calendarService = {
             workoutId: scheduled.workout_id,
             sessionId: null,
             dayOfWeek: i,
+            run: corridas.get(i) ?? null,
           });
         }
         continue;
@@ -175,6 +192,7 @@ export const calendarService = {
           workoutId: null,
           sessionId: null,
           dayOfWeek: i,
+          run: corridas.get(i) ?? null,
         });
       } else {
         days.push({
@@ -188,6 +206,7 @@ export const calendarService = {
           workoutId: null,
           sessionId: null,
           dayOfWeek: i,
+          run: corridas.get(i) ?? null,
         });
       }
     }
@@ -216,10 +235,12 @@ export const calendarService = {
   ): Promise<void> {
     const weekStartISO = toISODate(weekStart);
     const sequence = await trainingCycleService.getCycleSequence(db, startWorkoutId);
+    // Dias que o pacote reserva só para correr não recebem musculação.
+    const reservados = await packRunsRepository.diasSomenteCorrida(db);
     await scheduledWorkoutsRepository.autoFillWeek(
       db,
       weekStartISO,
-      distribuirNaSemana(sequence),
+      distribuirNaSemana(sequence, reservados),
     );
   },
 
@@ -300,16 +321,30 @@ export interface DiaProgramado {
  * Ciclo com mais de cinco fichas continua limitado a cinco por semana; as
  * demais entram nas semanas seguintes, porque a sequência continua de onde
  * parou.
+ *
+ * `diasReservados` tira dias do jogo antes de qualquer conta — são os dias em
+ * que o pacote manda SÓ correr. No bloco híbrido isso deixa quatro dias úteis
+ * para quatro fichas, e a quarta-feira fica com a corrida longa, que era o
+ * caso que a montagem automática atropelava.
  */
-function distribuirNaSemana(workoutIds: number[]): DiaProgramado[] {
+function distribuirNaSemana(
+  workoutIds: number[],
+  diasReservados: number[] = [],
+): DiaProgramado[] {
   const DIAS_UTEIS = 5;
-  const ids = workoutIds.filter((id) => id != null).slice(0, DIAS_UTEIS);
-  if (ids.length === 0) return [];
-  if (ids.length === 1) return [{ dayOfWeek: 0, workoutId: ids[0] }];
+  const disponiveis: number[] = [];
+  for (let d = 0; d < DIAS_UTEIS; d++) {
+    if (!diasReservados.includes(d)) disponiveis.push(d);
+  }
+  if (disponiveis.length === 0) return [];
 
-  const ultimo = DIAS_UTEIS - 1;
+  const ids = workoutIds.filter((id) => id != null).slice(0, disponiveis.length);
+  if (ids.length === 0) return [];
+  if (ids.length === 1) return [{ dayOfWeek: disponiveis[0], workoutId: ids[0] }];
+
+  const ultimo = disponiveis.length - 1;
   return ids.map((workoutId, i) => ({
-    dayOfWeek: Math.round((i * ultimo) / (ids.length - 1)),
+    dayOfWeek: disponiveis[Math.round((i * ultimo) / (ids.length - 1))],
     workoutId,
   }));
 }
