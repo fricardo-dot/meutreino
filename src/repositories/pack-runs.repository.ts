@@ -51,6 +51,16 @@ export const packRunsRepository = {
 };
 
 /**
+ * Ícone da atividade do dia. O bloco pode ser de corrida, bicicleta ou elíptico.
+ */
+export function iconeDaAtividade(run: PackRunRow): string {
+  const tipo = run.kind.toLowerCase();
+  if (tipo.startsWith('bicicleta')) return '🚴';
+  if (tipo.startsWith('elíptico')) return '🔄';
+  return '🏃';
+}
+
+/**
  * A corrida em três linhas:
  *
  *     corrida principal · 5 km

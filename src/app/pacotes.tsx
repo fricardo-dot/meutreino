@@ -22,6 +22,7 @@ import {
   type WorkoutWithCount,
 } from '@/repositories/workouts.repository';
 import {
+  iconeDaAtividade,
   linhasDaCorrida,
   packRunsRepository,
 } from '@/repositories/pack-runs.repository';
@@ -444,7 +445,7 @@ function ListaDeCorridas({ corridas }: { corridas: PackRunRow[] }) {
           {linhasDaCorrida(c).map((linha, i) => (
             <Text key={linha} style={styles.corridaLinha}>
               {i === 0
-                ? `🏃 ${DIAS[c.day_of_week]} · ${linha}${
+                ? `${iconeDaAtividade(c)} ${DIAS[c.day_of_week]} · ${linha}${
                     c.run_only === 1 ? ' (sem musculação)' : ''
                   }`
                 : linha}

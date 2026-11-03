@@ -603,3 +603,20 @@ export const SQL_MIGRATION_V12 = /* sql */ `
     UPDATE pack_runs SET uid = lower(hex(randomblob(16))) WHERE id = NEW.id;
   END;
 `;
+
+/**
+ * v13 — o dia de cardio ganha observação e guia de mobilidade.
+ *
+ * Elíptico e bicicleta usam a mesma linha de `pack_runs` que a corrida, porque
+ * também são do dia e não da ficha. Mas eles têm o que a corrida não tinha:
+ * quando fazer e quais alongamentos vêm depois.
+ *
+ * `guide_keys` guarda chaves separadas por vírgula, e não uma tabela: é uma
+ * lista curta e fixa, sempre lida junto com a linha, e o conteúdo de cada
+ * chave vive no código, com a imagem. Nullable porque os pacotes já existentes
+ * não têm guia.
+ */
+export const SQL_MIGRATION_V13 = /* sql */ `
+  ALTER TABLE pack_runs ADD COLUMN notes TEXT;
+  ALTER TABLE pack_runs ADD COLUMN guide_keys TEXT;
+`;

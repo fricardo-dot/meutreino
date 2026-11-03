@@ -95,6 +95,43 @@ export const sessionSetsRepository = {
   },
 
   /**
+   * Séries de um exercício nos últimos treinos concluídos, do mais recente ao
+   * mais antigo. O limite é por TREINO, para nunca cortar um deles ao meio.
+   */
+  async listHistoryByExercise(
+    db: DbExecutor,
+    exerciseId: number,
+    maxTreinos: number,
+  ): Promise<{
+    session_id: number;
+    session_name: string;
+    started_at: string;
+    weight: number;
+    reps: number;
+  }[]> {
+    return db.getAllAsync(
+      `SELECT s.id AS session_id, s.name AS session_name, s.started_at,
+              ss.weight, ss.reps
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN sessions s ON s.id = se.session_id
+        WHERE se.exercise_id = ?
+          AND s.status = 'concluida'
+          AND s.id IN (
+            SELECT DISTINCT s2.id
+              FROM sessions s2
+              JOIN session_exercises se2 ON se2.session_id = s2.id
+              JOIN session_sets ss2 ON ss2.session_exercise_id = se2.id
+             WHERE se2.exercise_id = ? AND s2.status = 'concluida'
+             ORDER BY s2.started_at DESC
+             LIMIT ?
+          )
+        ORDER BY s.started_at DESC, ss.set_number;`,
+      [exerciseId, exerciseId, maxTreinos],
+    );
+  },
+
+  /**
    * Remove uma série (edição futura).
    */
   async remove(db: AppDatabase, setId: number): Promise<void> {

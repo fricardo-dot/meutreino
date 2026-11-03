@@ -110,6 +110,10 @@ export interface PackRunRow {
   /** 1 no dia sem musculação — a semana automática pula esse dia. */
   run_only: number;
   uid: string | null;
+  /** Quando fazer, e o que vem depois. */
+  notes: string | null;
+  /** Chaves do guia de mobilidade, separadas por vírgula. */
+  guide_keys: string | null;
 }
 
 export interface WorkoutPackRow {

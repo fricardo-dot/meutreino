@@ -45,7 +45,7 @@ export const SEED_WORKOUTS: ReadonlyArray<SeedWorkout> = [
     cycle_order: 1,
     items: [
       { exercise: 'Supino reto com barra', target_sets: 4, target_reps: '6-8', target_rest_seconds: 120, notes: 'Peitoral, deltoide anterior e tríceps' },
-      { exercise: 'Barra fixa pronada', target_sets: 4, target_reps: '6-8', target_rest_seconds: 120, notes: 'Grande dorsal e bíceps' },
+      { exercise: 'Puxada pronada ao peito', target_sets: 4, target_reps: '6-8', target_rest_seconds: 120, notes: 'Grande dorsal e bíceps' },
       { exercise: 'Desenvolvimento com halteres', target_sets: 3, target_reps: '8-10', target_rest_seconds: 90, notes: 'Ombros' },
       { exercise: 'Remada curvada', target_sets: 3, target_reps: '8-10', target_rest_seconds: 90, notes: 'Costas' },
       { exercise: 'Supino inclinado halteres', target_sets: 3, target_reps: '10-12', target_rest_seconds: 90, notes: 'Peitoral superior' },

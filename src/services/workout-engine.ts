@@ -159,9 +159,13 @@ function buildPRCandidates(
   estimated1RM: number | null,
 ): Array<{ prType: PrType; value: number }> {
   const candidates: Array<{ prType: PrType; value: number }> = [
-    { prType: 'max_weight', value: input.weight },
     { prType: 'max_reps', value: input.reps },
   ];
+  // Prancha e abdominal sem carga gravam peso 0. Sem esta guarda, o comentário
+  // acima não valia para a carga, e aparecia o recorde "Maior carga: 0 kg".
+  if (input.weight > 0) {
+    candidates.push({ prType: 'max_weight', value: input.weight });
+  }
   if (volume > 0) {
     candidates.push({ prType: 'max_volume', value: volume });
   }

@@ -22,7 +22,8 @@ import { scheduledWorkoutsRepository } from '@/repositories/scheduled-workouts.r
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
 import { workoutPacksRepository } from '@/repositories/workout-packs.repository';
-import { linhasDaCorrida } from '@/repositories/pack-runs.repository';
+import { GuiaMobilidade } from '@/components/GuiaMobilidade';
+import { iconeDaAtividade, linhasDaCorrida } from '@/repositories/pack-runs.repository';
 import {
   calendarService,
   type CalendarDay,
@@ -642,9 +643,13 @@ function DayCard({
         <View style={styles.corridaWrap}>
           {linhasDaCorrida(day.run).map((linha, i) => (
             <Text key={linha} style={styles.corridaTexto}>
-              {i === 0 ? `🏃 ${linha}` : linha}
+              {i === 0 ? `${iconeDaAtividade(day.run!)} ${linha}` : linha}
             </Text>
           ))}
+          {day.run.notes ? (
+            <Text style={styles.corridaNota}>{day.run.notes}</Text>
+          ) : null}
+          <GuiaMobilidade chaves={day.run.guide_keys} />
         </View>
       ) : null}
 
@@ -1125,6 +1130,12 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontSize: 13,
     lineHeight: 18,
+  },
+  corridaNota: {
+    color: colors.text.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: spacing.xs,
   },
   dayLabel: { color: colors.text.secondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   dayLabelToday: { color: colors.accent.base },

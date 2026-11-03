@@ -19,7 +19,9 @@ import { useRestTimer } from '@/hooks/useRestTimer';
 import { useDatabase } from '@/hooks/useDatabase';
 import { sessionsRepository } from '@/repositories/sessions.repository';
 import { workoutsRepository } from '@/repositories/workouts.repository';
+import { GuiaMobilidade } from '@/components/GuiaMobilidade';
 import {
+  iconeDaAtividade,
   linhasDaCorrida,
   packRunsRepository,
 } from '@/repositories/pack-runs.repository';
@@ -36,6 +38,8 @@ import type { SessionExerciseRow, SessionRow, SessionSetRow } from '@/types/db';
  * exercício (exercises), trazidos via JOIN na carga da sessão.
  */
 type SessionExerciseWithPlan = SessionExerciseRow & {
+  /** Observação do exercício na ficha, como "carga por lado". */
+  plan_notes: string | null;
   target_sets: number | null;
   target_reps: string | null;
   target_rest_seconds: number | null;
@@ -79,6 +83,8 @@ export default function RegistrarSessaoScreen() {
    * observação da ficha, se houver.
    */
   const [prescricao, setPrescricao] = useState<string[]>([]);
+  /** Alongamentos previstos para o dia desta sessão. */
+  const [guiaDoDia, setGuiaDoDia] = useState<string | null>(null);
   const [exercises, setExercises] = useState<SessionExerciseWithPlan[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<number, SessionSetRow[]>>({});
   const [loading, setLoading] = useState(true);
@@ -96,27 +102,42 @@ export default function RegistrarSessaoScreen() {
       // sessão começou, e não da ficha que a originou. Ficha se remarca; o que
       // se corre na quarta é da quarta.
       const linhas: string[] = [];
+      let guia: string | null = null;
       if (s) {
-        const corridas = await packRunsRepository.mapaDoPacoteAtivo(db);
+        // A sessão guarda só o NOME da ficha (snapshot). A observação e o
+        // pacote vêm da ficha de origem, que continua existindo mesmo arquivada.
+        const ficha = s.workout_id != null
+          ? await workoutsRepository.getById(db, s.workout_id)
+          : null;
+        // O pacote é o da SESSÃO, não o ativo: abrir pelo histórico um treino
+        // do bloco anterior mostrava o cardio do bloco atual.
+        const atividades = ficha?.pack_id != null
+          ? new Map(
+              (await packRunsRepository.listByPack(db, ficha.pack_id)).map(
+                (a) => [a.day_of_week, a] as const,
+              ),
+            )
+          : await packRunsRepository.mapaDoPacoteAtivo(db);
         const local = new Date(`${utcToLocalISODate(s.started_at)}T12:00:00`);
         // getDay(): 0 = domingo. O app conta a semana a partir da segunda.
-        const corrida = corridas.get((local.getDay() + 6) % 7);
-        if (corrida) {
-          linhasDaCorrida(corrida).forEach((linha, i) => {
-            linhas.push(i === 0 ? `🏃 Antes: ${linha}` : linha);
+        const atividade = atividades.get((local.getDay() + 6) % 7);
+        if (atividade) {
+          // Sem observação é a corrida do bloco anterior, sempre antes do treino.
+          const prefixo = atividade.notes ? '' : 'Antes: ';
+          linhasDaCorrida(atividade).forEach((linha, i) => {
+            linhas.push(i === 0 ? `${iconeDaAtividade(atividade)} ${prefixo}${linha}` : linha);
           });
+          if (atividade.notes) linhas.push(atividade.notes);
+          guia = atividade.guide_keys;
         }
-      }
-      // A sessão guarda só o NOME da ficha (snapshot). A observação vem da
-      // ficha de origem, que continua existindo mesmo em pacote arquivado.
-      if (s?.workout_id != null) {
-        const nota = (await workoutsRepository.getById(db, s.workout_id))?.notes;
-        if (nota) linhas.push(nota);
+        if (ficha?.notes) linhas.push(ficha.notes);
       }
       setPrescricao(linhas);
+      setGuiaDoDia(guia);
       if (s) {
         const exs = await db.getAllAsync<SessionExerciseWithPlan>(
-          `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds, e.equipment
+          `SELECT se.*, we.target_sets, we.target_reps, we.target_rest_seconds,
+                  we.notes AS plan_notes, e.equipment
            FROM session_exercises se
            LEFT JOIN workout_exercises we ON we.id = se.workout_exercise_id
            LEFT JOIN exercises e ON e.id = se.exercise_id
@@ -239,7 +260,7 @@ export default function RegistrarSessaoScreen() {
         // que é quando se rola atrás do próximo exercício. Aqui ela é lida no
         // começo e sai do caminho.
         ListHeaderComponent={
-          prescricao.length > 0 ? (
+          prescricao.length > 0 || guiaDoDia ? (
             <View style={styles.notaWrap}>
               {/* `prescricao` mistura linhas da corrida com a nota da ficha:
                   o texto não serve de chave porque pode repetir. */}
@@ -248,6 +269,7 @@ export default function RegistrarSessaoScreen() {
                   {linha}
                 </Text>
               ))}
+              <GuiaMobilidade chaves={guiaDoDia} />
             </View>
           ) : null
         }
@@ -486,6 +508,9 @@ function ExerciseBlock({
       {sessionExercise.equipment ? (
         <Text style={styles.blockMeta}>{sessionExercise.equipment}</Text>
       ) : null}
+      {sessionExercise.plan_notes ? (
+        <Text style={styles.blockNota}>{sessionExercise.plan_notes}</Text>
+      ) : null}
 
       {/* Séries já registradas */}
       {sets.length > 0 && (
@@ -662,6 +687,13 @@ const styles = StyleSheet.create({
   blockTitle: { color: colors.text.primary, fontSize: 17, fontWeight: '600', marginBottom: spacing.md },
   blockPlan: { color: colors.accent.base, fontSize: 13, fontWeight: '500', marginTop: spacing.xs },
   blockMeta: { color: colors.text.muted, fontSize: typography.size.xs, marginTop: 2 },
+  blockNota: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
   allDoneText: { color: colors.status.success, fontSize: typography.size.sm, fontWeight: '600', textAlign: 'center', paddingVertical: spacing.md },
   setsTable: { marginBottom: spacing.md },
   setRow: {

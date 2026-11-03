@@ -203,6 +203,7 @@ export default function TreinoDetalheScreen() {
                 {item.target_sets}x {item.target_reps}
                 {item.target_rest_seconds ? ` · descanso ${item.target_rest_seconds}s` : ''}
               </Text>
+              {item.notes ? <Text style={styles.cardNota}>{item.notes}</Text> : null}
             </View>
             <Pressable onPress={() => handleRemove(item.id)} hitSlop={8}>
               <Text style={styles.removeBtn}>✕</Text>
@@ -360,6 +361,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text.primary, fontSize: typography.size.md, fontWeight: '600' },
   cardMeta: { color: colors.text.muted, fontSize: 13, marginTop: 2 },
   cardPlan: { color: colors.accent.base, fontSize: typography.size.sm, marginTop: 6, fontWeight: '500' },
+  cardNota: { color: colors.text.secondary, fontSize: 13, lineHeight: 18, marginTop: spacing.xs },
   removeBtn: { color: colors.status.danger, fontSize: typography.size.lg, paddingLeft: spacing.md },
   empty: { alignItems: 'center', paddingTop: spacing['5xl'], paddingHorizontal: spacing['3xl'] },
   emptyTitle: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },

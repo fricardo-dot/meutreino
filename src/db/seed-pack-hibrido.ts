@@ -30,11 +30,16 @@ export interface CorridaDoDia {
   tipo: string;
   /** "1 km", "5 km", "3 × 1 km" — texto porque o formato varia. */
   volume: string;
-  pace: string;
+  /** Só para corrida; bicicleta e elíptico não têm. */
+  pace?: string;
   /** Velocidade equivalente na esteira, da tabela de conversão do usuário. */
-  esteira: string;
+  esteira?: string;
   /** `true` no dia sem musculação. É o que faz a semana automática pulá-lo. */
   somenteCorrida: boolean;
+  /** Quando fazer, e o que vem depois. */
+  notas?: string;
+  /** Chaves do guia de mobilidade do dia (`src/data/mobilidade.ts`). */
+  guia?: ReadonlyArray<string>;
 }
 
 /**
@@ -121,7 +126,7 @@ export const PACK_HIBRIDO_WORKOUTS: ReadonlyArray<SeedWorkout> = [
     cycle_order: 2,
     items: [
       { exercise: 'Supino reto com barra', target_sets: 3, target_reps: '5-8', target_rest_seconds: 120, notes: 'Peitoral, deltoide anterior e tríceps' },
-      { exercise: 'Barra fixa pronada', target_sets: 3, target_reps: '6-10', target_rest_seconds: 120, notes: 'Dorsal e bíceps' },
+      { exercise: 'Puxada pronada ao peito', target_sets: 3, target_reps: '6-10', target_rest_seconds: 120, notes: 'Dorsal e bíceps' },
       { exercise: 'Desenvolvimento com halteres', target_sets: 3, target_reps: '8-10', target_rest_seconds: 120 },
       { exercise: 'Remada máquina com apoio', target_sets: 3, target_reps: '8-12', target_rest_seconds: 120 },
       { exercise: 'Elevação lateral', target_sets: 3, target_reps: '12-20', target_rest_seconds: 60 },

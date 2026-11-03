@@ -17,6 +17,10 @@ import { LoadErrorView } from '@/components/LoadErrorView';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useDatabase } from '@/hooks/useDatabase';
 import { exercisesRepository } from '@/repositories/exercises.repository';
+import {
+  listarCargasDoExercicio,
+  type CargasDoTreino,
+} from '@/services/exercise-history.service';
 import { colors, radius, spacing, typography } from '@/theme';
 import type { ExerciseRow, MuscleGroup } from '@/types/db';
 
@@ -216,7 +220,31 @@ function ExerciseCard({
   exercise: ExerciseRow;
   onDelete: () => void;
 }) {
+  const { db } = useDatabase();
   const [expanded, setExpanded] = useState(false);
+  /** `null` = ainda carregando; `[]` = exercício nunca feito. */
+  const [cargas, setCargas] = useState<CargasDoTreino[] | null>(null);
+  const [erroCargas, setErroCargas] = useState(false);
+
+  // Só consulta ao abrir: são dezenas de cards, e quase nenhum é aberto.
+  // Recarrega a cada abertura porque um treino pode ter sido registrado entre
+  // uma e outra, com a aba mantida viva pela navegação.
+  useEffect(() => {
+    if (!expanded || !db) return;
+    let cancelado = false;
+    setCargas(null);
+    setErroCargas(false);
+    listarCargasDoExercicio(db, exercise.id)
+      .then((lista) => {
+        if (!cancelado) setCargas(lista);
+      })
+      .catch(() => {
+        if (!cancelado) setErroCargas(true);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [expanded, db, exercise.id]);
 
   return (
     <Pressable
@@ -253,9 +281,27 @@ function ExerciseCard({
           {exercise.common_mistakes ? (
             <DetailRow label="Erros comuns" value={exercise.common_mistakes} />
           ) : null}
-          {!exercise.secondary_muscles && !exercise.instructions && !exercise.common_mistakes ? (
-            <Text style={styles.noDetails}>Sem detalhes cadastrados.</Text>
-          ) : null}
+          <View style={{ marginTop: spacing.sm }}>
+            <Text style={styles.detailLabel}>Histórico de cargas</Text>
+            {erroCargas ? (
+              <Text style={styles.noDetails}>Não foi possível carregar o histórico.</Text>
+            ) : cargas === null ? (
+              <Text style={styles.noDetails}>Carregando…</Text>
+            ) : cargas.length === 0 ? (
+              <Text style={styles.noDetails}>Nenhum treino registrado ainda.</Text>
+            ) : (
+              cargas.map((t) => (
+                <View key={t.sessionId} style={styles.cargaLinha}>
+                  <Text style={styles.cargaData}>
+                    {t.data.slice(8, 10)}/{t.data.slice(5, 7)}/{t.data.slice(2, 4)} · {t.treino}
+                  </Text>
+                  <Text style={styles.detailValue}>
+                    {t.series.map((serie) => `${serie.weight} kg × ${serie.reps}`).join(' · ')}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
         </View>
       ) : null}
     </Pressable>
@@ -394,6 +440,8 @@ function CreateExerciseModal({
 }
 
 const styles = StyleSheet.create({
+  cargaLinha: { marginTop: spacing.xs },
+  cargaData: { color: colors.text.muted, fontSize: typography.size.xs },
   screen: { flex: 1, backgroundColor: colors.background.base },
   center: { flex: 1, backgroundColor: colors.background.base, alignItems: 'center', justifyContent: 'center' },
   header: {

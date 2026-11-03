@@ -4,9 +4,16 @@ import { appMetadataRepository } from '@/repositories/app-metadata.repository';
 import { SEED_EXERCISES } from './seed-exercises';
 import { SEED_WORKOUTS, type SeedWorkout } from './seed-workouts';
 import {
+  PACK_HIBRIDO_2_ATIVIDADES,
+  PACK_HIBRIDO_2_NOME,
+  PACK_HIBRIDO_2_NOTAS,
+  PACK_HIBRIDO_2_WORKOUTS,
+} from './seed-pack-hibrido-2';
+import {
   LEGADO_NOTAS_DAS_FICHAS,
   LEGADO_NOTAS_DO_PACOTE,
   PACK_HIBRIDO_CORRIDAS,
+  type CorridaDoDia,
   PACK_HIBRIDO_NOME,
   PACK_HIBRIDO_NOTAS,
   PACK_HIBRIDO_WORKOUTS,
@@ -57,6 +64,9 @@ const SEED_PACK_HIBRIDO_NOTAS_KEY = 'seed_pack_hibrido_notas_v1';
  */
 const SEED_PACK_HIBRIDO_CORRIDAS_KEY = 'seed_pack_hibrido_corridas_v1';
 
+/** Marca que o pacote "Treino Híbrido 2" já foi criado. */
+const SEED_PACK_HIBRIDO_2_KEY = 'seed_pack_hibrido_2_v1';
+
 /**
  * Seed inicial do banco.
  *
@@ -78,6 +88,11 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
   }
 
   // 2. Exercícios pré-cadastrados.
+  //
+  // Os ajustes vêm ANTES do laço: se o nome novo fosse inserido primeiro, a
+  // renomeação encontraria o nome ocupado e o histórico ficaria no exercício
+  // antigo, com um novo vazio ao lado.
+  await ajustarExerciciosExistentes(db);
   for (const ex of SEED_EXERCISES) {
     await db.runAsync(
       `INSERT OR IGNORE INTO exercises
@@ -105,6 +120,22 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
     await db.withTransactionAsync(async (tx) => {
       await seedWorkouts(tx, SEED_WORKOUTS);
       await appMetadataRepository.set(tx, SEED_WORKOUTS_KEY, '1');
+    });
+  }
+
+  // Pacote "Treino Híbrido 2". Fica antes do Híbrido original porque o passo
+  // dele termina com `return` em banco novo.
+  const pack2Seeded = await appMetadataRepository.get(db, SEED_PACK_HIBRIDO_2_KEY);
+  if (pack2Seeded === null) {
+    await db.withTransactionAsync(async (tx) => {
+      const packId = await seedPackArquivado(
+        tx,
+        PACK_HIBRIDO_2_NOME,
+        PACK_HIBRIDO_2_NOTAS,
+        PACK_HIBRIDO_2_WORKOUTS,
+      );
+      await gravarCorridas(tx, packId, PACK_HIBRIDO_2_ATIVIDADES);
+      await appMetadataRepository.set(tx, SEED_PACK_HIBRIDO_2_KEY, '1');
     });
   }
 
@@ -151,25 +182,60 @@ export async function ensureSeedData(db: AppDatabase): Promise<void> {
 }
 
 /**
- * Grava a corrida de cada dia do bloco.
+ * Ajusta exercícios já cadastrados para o que o usuário realmente faz.
+ *
+ * "Barra fixa pronada" sempre foi a puxada na máquina: ele ainda não faz barra
+ * fixa. Renomear a MESMA linha mantém o histórico e a sugestão de carga, que
+ * seguem o id. Criar outro exercício recomeçaria tudo do zero.
+ *
+ * O `NOT EXISTS` é o que torna isto idempotente, sem marcador: depois da
+ * primeira vez o nome novo já existe. Se um backup antigo trouxer o nome de
+ * volta para essa linha, a próxima abertura corrige.
+ *
+ * O Crucifixo inverso passa a halteres porque a academia não tem a máquina.
+ */
+async function ajustarExerciciosExistentes(db: AppDatabase): Promise<void> {
+  await db.runAsync(
+    `UPDATE exercises
+        SET name = 'Puxada pronada ao peito', equipment = 'máquina'
+      WHERE name = 'Barra fixa pronada' AND is_active = 1
+        AND NOT EXISTS (
+          SELECT 1 FROM exercises
+           WHERE LOWER(TRIM(name)) = 'puxada pronada ao peito' AND is_active = 1
+        );`,
+  );
+  await db.runAsync(
+    `UPDATE exercises SET equipment = 'halteres'
+      WHERE name = 'Crucifixo inverso' AND equipment = 'máquina';`,
+  );
+}
+
+/**
+ * Grava a atividade de cada dia do bloco.
  *
  * `INSERT OR IGNORE` apoiado no índice único (pacote + dia): rodar de novo não
- * duplica, e uma corrida que o usuário já tenha ajustado fica como está.
+ * duplica, e uma linha que o usuário já tenha ajustado fica como está.
  */
-async function gravarCorridas(db: DbTransaction, packId: number): Promise<void> {
-  for (const corrida of PACK_HIBRIDO_CORRIDAS) {
+async function gravarCorridas(
+  db: DbTransaction,
+  packId: number,
+  atividades: ReadonlyArray<CorridaDoDia> = PACK_HIBRIDO_CORRIDAS,
+): Promise<void> {
+  for (const atividade of atividades) {
     await db.runAsync(
       `INSERT OR IGNORE INTO pack_runs
-        (pack_id, day_of_week, kind, volume, pace, treadmill, run_only)
-       VALUES (?, ?, ?, ?, ?, ?, ?);`,
+        (pack_id, day_of_week, kind, volume, pace, treadmill, run_only, notes, guide_keys)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         packId,
-        corrida.dia,
-        corrida.tipo,
-        corrida.volume,
-        corrida.pace,
-        corrida.esteira,
-        corrida.somenteCorrida ? 1 : 0,
+        atividade.dia,
+        atividade.tipo,
+        atividade.volume,
+        atividade.pace ?? null,
+        atividade.esteira ?? null,
+        atividade.somenteCorrida ? 1 : 0,
+        atividade.notas ?? null,
+        atividade.guia ? atividade.guia.join(',') : null,
       ],
     );
   }

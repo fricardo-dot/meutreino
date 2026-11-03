@@ -20,7 +20,7 @@ export const SEED_EXERCISES: ReadonlyArray<
   { name: 'Paralelas', muscle_group: 'peito', equipment: 'peso do corpo', difficulty: 'avançado', secondary_muscles: 'tríceps, deltoide anterior' },
 
   // ── Costas ─────────────────────────────────────────────────────────────
-  { name: 'Barra fixa pronada', muscle_group: 'costas', equipment: 'peso do corpo', difficulty: 'avançado', secondary_muscles: 'bíceps' },
+  { name: 'Puxada pronada ao peito', muscle_group: 'costas', equipment: 'máquina', difficulty: 'intermediário', secondary_muscles: 'bíceps' },
   { name: 'Barra fixa supinada', muscle_group: 'costas', equipment: 'peso do corpo', difficulty: 'intermediário', secondary_muscles: 'bíceps' },
   { name: 'Puxada alta', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
   { name: 'Puxada neutra', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
@@ -63,6 +63,9 @@ export const SEED_EXERCISES: ReadonlyArray<
 
   // ── Core ───────────────────────────────────────────────────────────────
   { name: 'Abdominal na polia', muscle_group: 'core', equipment: 'cabo', difficulty: 'iniciante' },
+  { name: 'Abdominal reverso', muscle_group: 'core', equipment: 'peso do corpo', difficulty: 'iniciante' },
+  { name: 'Prancha lateral', muscle_group: 'core', equipment: 'peso do corpo', difficulty: 'iniciante', secondary_muscles: 'oblíquos' },
+  { name: 'Pallof press', muscle_group: 'core', equipment: 'cabo', difficulty: 'intermediário', secondary_muscles: 'oblíquos' },
   // ── Adicionados para o pacote "Treino Híbrido" ─────────────────────────
   // Variações unilaterais e de implemento entram como exercícios PRÓPRIOS, e
   // não como observação numa ficha: a carga de um leg press unilateral não é
@@ -77,7 +80,7 @@ export const SEED_EXERCISES: ReadonlyArray<
   { name: 'Panturrilha sentada unilateral', muscle_group: 'pernas', equipment: 'máquina', difficulty: 'iniciante' },
   { name: 'Remada máquina com apoio', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
   { name: 'Remada baixa neutra', muscle_group: 'costas', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'bíceps' },
-  { name: 'Crucifixo inverso', muscle_group: 'ombros', equipment: 'máquina', difficulty: 'iniciante', secondary_muscles: 'deltoide posterior, trapézio' },
+  { name: 'Crucifixo inverso', muscle_group: 'ombros', equipment: 'halteres', difficulty: 'iniciante', secondary_muscles: 'deltoide posterior, trapézio' },
   { name: 'Rosca inclinada', muscle_group: 'braços', equipment: 'halteres', difficulty: 'intermediário' },
   { name: 'Tríceps francês na polia', muscle_group: 'braços', equipment: 'cabo', difficulty: 'iniciante' },
 ];
