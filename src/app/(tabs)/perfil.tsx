@@ -129,33 +129,12 @@ export default function PerfilScreen() {
     }
     try {
       const json = await backupService.exportData(db);
-      const nome = `meutreino-backup-${carimboLocal()}.json`;
-      const arquivo = new File([json], nome, { type: 'application/json' });
-
-      // No celular, baixar não serve: num PWA em standalone (iOS
-      // principalmente) o clique num link de blob não abre nada e falha
-      // calado. Compartilhar é o caminho que existe lá — cai no Arquivos, no
-      // Drive, no WhatsApp, onde o usuário quiser.
-      if (navigator.canShare?.({ files: [arquivo] })) {
-        try {
-          await navigator.share({ files: [arquivo], title: nome });
-          setErrorMsg(`Backup ${nome} enviado.`);
-          return;
-        } catch (erro) {
-          // Cancelar o menu de compartilhamento não é falha: o usuário
-          // desistiu, e cair no download seria baixar o que ele recusou.
-          if (erro instanceof DOMException && erro.name === 'AbortError') return;
-          // Qualquer outro erro: segue para o download.
-        }
-      }
-
-      const url = URL.createObjectURL(arquivo);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nome;
-      a.click();
-      URL.revokeObjectURL(url);
-      setErrorMsg(`Backup salvo como ${nome}.`);
+      const aviso = await entregarArquivo(
+        `meutreino-backup-${carimboLocal()}.json`,
+        json,
+        'application/json',
+      );
+      if (aviso) setErrorMsg(`Backup: ${aviso}`);
     } catch (error) {
       setErrorMsg(`Erro ao exportar: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -173,23 +152,32 @@ export default function PerfilScreen() {
       }
       const markdown = await generatePackReport(db, pacote);
 
-      if (Platform.OS === 'web') {
-        // Na web: copia pra área de transferência + baixa arquivo.
-        try {
-          await navigator.clipboard.writeText(markdown);
-        } catch {
-          // Clipboard pode falhar sem HTTPS — ignora.
-        }
-        const blob = new Blob([markdown], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `meutreino-bloco-${carimboLocal()}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setErrorMsg('Relatório do bloco gerado! Arquivo baixado e copiado pra área de transferência.');
-      } else {
+      if (Platform.OS !== 'web') {
         setErrorMsg('Relatório disponível apenas na versão web por enquanto.');
+        return;
+      }
+
+      // A cópia para a área de transferência é um atalho a mais, não a
+      // entrega: num celular ela costuma falhar, e era ela que a mensagem
+      // antiga anunciava junto com um download que também não acontecia.
+      let copiou = false;
+      try {
+        await navigator.clipboard.writeText(markdown);
+        copiou = true;
+      } catch {
+        // Sem HTTPS, sem permissão, ou fora de um gesto do usuário.
+      }
+
+      const aviso = await entregarArquivo(
+        `meutreino-bloco-${carimboLocal()}.md`,
+        markdown,
+        'text/markdown',
+      );
+      if (aviso) {
+        setErrorMsg(
+          `Relatório do bloco: ${aviso}` +
+            (copiou ? ' Também está na área de transferência.' : ''),
+        );
       }
     } catch (error) {
       setErrorMsg(`Erro ao gerar relatório: ${error instanceof Error ? error.message : String(error)}`);
@@ -753,6 +741,47 @@ function formatPR(type: string, value: number): string {
 }
 
 // ── Estilos ────────────────────────────────────────────────────────────────
+
+/**
+ * Entrega um arquivo gerado pelo app: compartilha no celular, baixa no PC.
+ *
+ * Existe para os dois botões usarem o MESMO caminho. Quando eram dois trechos
+ * parecidos, só um ganhou o compartilhamento e o outro continuou tentando
+ * baixar — num PWA em standalone (iOS principalmente) o clique num link de
+ * blob não abre nada e falha calado, e a tela ainda dizia "arquivo baixado".
+ *
+ * @returns a frase que descreve o que REALMENTE aconteceu, ou `null` se o
+ *          usuário desistiu do menu de compartilhamento.
+ */
+async function entregarArquivo(
+  nome: string,
+  conteudo: string,
+  tipo: string,
+): Promise<string | null> {
+  const arquivo = new File([conteudo], nome, { type: tipo });
+
+  if (navigator.canShare?.({ files: [arquivo] })) {
+    try {
+      await navigator.share({ files: [arquivo], title: nome });
+      return `${nome} enviado.`;
+    } catch (erro) {
+      // Cancelar o menu não é falha: o usuário desistiu, e cair no download
+      // seria baixar justamente o que ele recusou.
+      if (erro instanceof DOMException && erro.name === 'AbortError') return null;
+      // Qualquer outro erro: segue para o download.
+    }
+  }
+
+  const url = URL.createObjectURL(arquivo);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  // Revogar na hora pode cancelar o download antes de ele começar.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  // "Iniciado", não "salvo": o navegador não conta ao app se o arquivo chegou.
+  return `download de ${nome} iniciado.`;
+}
 
 /**
  * Carimbo de AGORA em hora local: `2026-09-14-161432`.
