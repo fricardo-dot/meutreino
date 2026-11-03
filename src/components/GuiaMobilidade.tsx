@@ -54,13 +54,8 @@ export function GuiaMobilidade({ chaves }: { chaves: string | null }) {
       >
         <Pressable style={styles.fundo} onPress={() => setAberto(false)}>
           <Pressable style={styles.folha} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.cabecalho}>
-              <Text style={styles.titulo}>Alongamentos e ativação</Text>
-              <Pressable onPress={() => setAberto(false)} hitSlop={8}>
-                <Text style={styles.fechar}>Fechar</Text>
-              </Pressable>
-            </View>
-            <ScrollView contentContainerStyle={styles.lista}>
+            <Text style={styles.titulo}>Alongamentos e ativação</Text>
+            <ScrollView style={styles.rolagem} contentContainerStyle={styles.lista}>
               {movimentos.map((m) => (
                 <View key={m.nome} style={styles.cartao}>
                   <Image
@@ -81,6 +76,13 @@ export function GuiaMobilidade({ chaves }: { chaves: string | null }) {
                 Deve dar uma tensão muscular suave, nunca dor lateral no joelho.
               </Text>
             </ScrollView>
+            {/* Embaixo e fixo: no alto, o iPhone entregava o toque à barra de
+                status, e sem outra saída a tela ficava presa. */}
+            <View style={styles.rodape}>
+              <Pressable style={styles.botaoFechar} onPress={() => setAberto(false)}>
+                <Text style={styles.botaoFecharTexto}>Fechar</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -99,17 +101,36 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: colors.background.base,
   },
-  cabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing['3xl'],
+  titulo: {
+    color: colors.text.primary,
+    fontSize: typography.size.lg,
+    fontWeight: '600',
+    // Abaixo da barra de status e da ilha do iPhone.
+    paddingTop: 60,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  titulo: { color: colors.text.primary, fontSize: typography.size.lg, fontWeight: '600' },
-  fechar: { color: colors.accent.base, fontSize: typography.size.sm, fontWeight: '600' },
-  lista: { paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'] },
+  rolagem: { flex: 1 },
+  lista: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+  rodape: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    // Acima da barra de gestos do iPhone.
+    paddingBottom: spacing['3xl'],
+    borderTopWidth: 1,
+    borderTopColor: colors.background.border,
+  },
+  botaoFechar: {
+    backgroundColor: colors.accent.base,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  botaoFecharTexto: {
+    color: colors.background.base,
+    fontSize: typography.size.md,
+    fontWeight: '600',
+  },
   cartao: {
     backgroundColor: colors.background.surface,
     borderWidth: 1,
